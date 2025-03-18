@@ -10,6 +10,7 @@ import NotFound from "./pages/NotFound";
 import Login from "./pages/Login";
 import SignUp from "./pages/SignUp";
 import Dashboard from "./pages/Dashboard";
+import BrowseQuizzes from "./pages/BrowseQuizzes";
 import CreateQuiz from "./pages/CreateQuiz";
 import EditQuiz from "./pages/EditQuiz";
 import TakeQuiz from "./pages/TakeQuiz";
@@ -29,6 +30,7 @@ const App = () => (
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<SignUp />} />
             <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/browse" element={<BrowseQuizzes />} />
             <Route path="/quiz/create" element={<CreateQuiz />} />
             <Route path="/quiz/edit/:id" element={<EditQuiz />} />
             <Route path="/quiz/take/:id" element={<TakeQuiz />} />
@@ -37,7 +39,6 @@ const App = () => (
             <Route path="/editor/:id" element={<Navigate to="/quiz/edit/:id" replace />} />
             <Route path="/stats/:id" element={<Navigate to="/quiz/stats/:id" replace />} />
             <Route path="/take/:id" element={<Navigate to="/quiz/take/:id" replace />} />
-            <Route path="/browse" element={<Navigate to="/dashboard" replace />} />
             {/* Catch-all route for 404 */}
             <Route path="*" element={<NotFound />} />
           </Routes>
