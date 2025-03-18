@@ -20,6 +20,7 @@ export type Quiz = {
   created_at: string;
   created_by: string; // Using created_by as per database schema
   is_public?: boolean;
+  is_published?: boolean; // Add the is_published property
 };
 
 export type Question = {
