@@ -51,7 +51,8 @@ const CreateQuiz = () => {
         title,
         description,
         created_by: user.id,
-        is_published: false
+        is_published: false,
+        is_public: true // Добавляем поле is_public если оно есть в базе
       });
       
       // Create quiz in Supabase with required columns
@@ -61,7 +62,8 @@ const CreateQuiz = () => {
           title,
           description,
           created_by: user.id,
-          is_published: false // Setting default to false
+          is_published: false, // Устанавливаем значение по умолчанию
+          is_public: true // Добавляем поле is_public если оно есть в базе
         })
         .select()
         .single();

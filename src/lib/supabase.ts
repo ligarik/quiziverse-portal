@@ -19,7 +19,8 @@ export type Quiz = {
   description: string;
   created_at: string;
   created_by: string; // Using created_by as per database schema
-  is_published: boolean; // Added back to match code usage
+  is_published: boolean; // This field matches what the code expects
+  is_public?: boolean; // Adding this field which might be in the database
 };
 
 export type Question = {
