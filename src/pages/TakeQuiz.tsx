@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
@@ -66,12 +65,11 @@ const TakeQuiz = () => {
           return;
         }
         
-        // Получаем вопросы для теста
+        // Получаем вопросы для теста - удаляем сортировку по order_position, которой нет
         const { data: questionsData, error: questionsError } = await supabase
           .from('questions')
           .select('*')
-          .eq('quiz_id', id)
-          .order('order_position', { ascending: true });
+          .eq('quiz_id', id);
         
         if (questionsError) throw questionsError;
         

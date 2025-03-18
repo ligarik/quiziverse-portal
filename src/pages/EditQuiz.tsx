@@ -108,8 +108,7 @@ const EditQuiz = () => {
         const { data: questionsData, error: questionsError } = await supabase
           .from('questions')
           .select('*')
-          .eq('quiz_id', id)
-          .order('order_position', { ascending: true });
+          .eq('quiz_id', id);
         
         if (questionsError) throw questionsError;
         
@@ -237,8 +236,7 @@ const EditQuiz = () => {
         .from('questions')
         .insert({
           quiz_id: id,
-          question_text: newQuestionText,
-          order_position: questions.length
+          question_text: newQuestionText
         })
         .select('id')
         .single();
@@ -265,7 +263,6 @@ const EditQuiz = () => {
         quiz_id: id,
         question_text: newQuestionText,
         created_at: new Date().toISOString(),
-        order_position: questions.length,
         answers: answersData || []
       };
       
@@ -317,20 +314,6 @@ const EditQuiz = () => {
       if (questionError) throw questionError;
       
       setQuestions(questions.filter(q => q.id !== questionId));
-      
-      const updatedQuestions = questions.filter(q => q.id !== questionId).map((q, index) => ({
-        ...q,
-        order_position: index
-      }));
-      
-      for (const question of updatedQuestions) {
-        await supabase
-          .from('questions')
-          .update({ order_position: question.order_position })
-          .eq('id', question.id);
-      }
-      
-      setQuestions(updatedQuestions);
       
       toast({
         title: 'Вопрос удален',

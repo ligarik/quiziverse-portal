@@ -28,7 +28,7 @@ export type Question = {
   quiz_id: string;
   question_text: string;
   created_at: string;
-  order_position: number;
+  // Удаляем поле order_position, так как его нет в базе данных
 };
 
 export type Answer = {
