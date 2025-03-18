@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
@@ -55,7 +54,7 @@ const CreateQuiz = () => {
           user_id: user.id,
           is_published: false
         })
-        .select('id')
+        .select()
         .single();
       
       if (error) throw error;

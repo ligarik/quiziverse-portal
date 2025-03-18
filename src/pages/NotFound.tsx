@@ -1,5 +1,10 @@
+
 import { useLocation } from "react-router-dom";
 import { useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import { Link } from "react-router-dom";
+import Navbar from "@/components/Navbar";
+import Footer from "@/components/Footer";
 
 const NotFound = () => {
   const location = useLocation();
@@ -12,14 +17,30 @@ const NotFound = () => {
   }, [location.pathname]);
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100">
-      <div className="text-center">
-        <h1 className="text-4xl font-bold mb-4">404</h1>
-        <p className="text-xl text-gray-600 mb-4">Oops! Page not found</p>
-        <a href="/" className="text-blue-500 hover:text-blue-700 underline">
-          Return to Home
-        </a>
-      </div>
+    <div className="min-h-screen flex flex-col">
+      <Navbar />
+      
+      <main className="flex-grow flex items-center justify-center py-16 px-4 md:px-6">
+        <div className="text-center max-w-md mx-auto">
+          <h1 className="text-7xl font-bold text-primary mb-4">404</h1>
+          <p className="text-2xl font-medium text-foreground mb-6">
+            Страница не найдена
+          </p>
+          <p className="text-muted-foreground mb-8">
+            Извините, запрашиваемая страница не существует или была перемещена.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <Button asChild>
+              <Link to="/">На главную</Link>
+            </Button>
+            <Button variant="outline" asChild>
+              <Link to="/dashboard">Мои тесты</Link>
+            </Button>
+          </div>
+        </div>
+      </main>
+      
+      <Footer />
     </div>
   );
 };

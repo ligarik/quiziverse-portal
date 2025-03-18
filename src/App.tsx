@@ -3,7 +3,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
@@ -33,7 +33,12 @@ const App = () => (
             <Route path="/quiz/edit/:id" element={<EditQuiz />} />
             <Route path="/quiz/take/:id" element={<TakeQuiz />} />
             <Route path="/quiz/stats/:id" element={<QuizStats />} />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+            {/* Redirect old paths to new ones */}
+            <Route path="/editor/:id" element={<Navigate to="/quiz/edit/:id" replace />} />
+            <Route path="/stats/:id" element={<Navigate to="/quiz/stats/:id" replace />} />
+            <Route path="/take/:id" element={<Navigate to="/quiz/take/:id" replace />} />
+            <Route path="/browse" element={<Navigate to="/dashboard" replace />} />
+            {/* Catch-all route for 404 */}
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
