@@ -50,17 +50,18 @@ const CreateQuiz = () => {
       console.log('Attempting to create quiz with:', {
         title,
         description,
-        created_by: user.id
+        created_by: user.id,
+        is_published: false
       });
       
-      // Create quiz in Supabase with only the columns that actually exist
+      // Create quiz in Supabase with required columns
       const { data: quiz, error } = await supabase
         .from('quizzes')
         .insert({
           title,
           description,
-          created_by: user.id, // Using created_by instead of user_id
-          // Removing is_published as it doesn't exist in the schema
+          created_by: user.id,
+          is_published: false // Setting default to false
         })
         .select()
         .single();

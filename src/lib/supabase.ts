@@ -18,8 +18,8 @@ export type Quiz = {
   title: string;
   description: string;
   created_at: string;
-  created_by: string; // Changed from user_id to created_by
-  // Removed is_published as it doesn't exist in schema
+  created_by: string; // Using created_by as per database schema
+  is_published: boolean; // Added back to match code usage
 };
 
 export type Question = {

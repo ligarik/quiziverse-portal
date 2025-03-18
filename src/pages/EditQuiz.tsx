@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
@@ -75,7 +74,6 @@ const EditQuiz = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  // Загружаем информацию о тесте и вопросах
   useEffect(() => {
     const fetchQuizData = async () => {
       if (!id || !user) return;
@@ -83,12 +81,11 @@ const EditQuiz = () => {
       try {
         setIsLoading(true);
         
-        // Получаем основную информацию о тесте
         const { data: quizData, error: quizError } = await supabase
           .from('quizzes')
           .select('*')
           .eq('id', id)
-          .eq('user_id', user.id)
+          .eq('created_by', user.id)
           .single();
         
         if (quizError) throw quizError;
@@ -103,7 +100,11 @@ const EditQuiz = () => {
           return;
         }
         
-        // Получаем вопросы для теста
+        const quizWithPublishState = {
+          ...quizData,
+          is_published: quizData.is_published || false
+        };
+        
         const { data: questionsData, error: questionsError } = await supabase
           .from('questions')
           .select('*')
@@ -112,7 +113,6 @@ const EditQuiz = () => {
         
         if (questionsError) throw questionsError;
         
-        // Получаем ответы для всех вопросов
         const questionsWithAnswers: QuestionWithAnswers[] = [];
         
         for (const question of questionsData || []) {
@@ -129,9 +129,9 @@ const EditQuiz = () => {
           });
         }
         
-        setQuiz(quizData);
-        setTitle(quizData.title);
-        setDescription(quizData.description || '');
+        setQuiz(quizWithPublishState);
+        setTitle(quizWithPublishState.title);
+        setDescription(quizWithPublishState.description || '');
         setQuestions(questionsWithAnswers);
       } catch (error) {
         console.error('Ошибка при загрузке теста:', error);
@@ -149,7 +149,6 @@ const EditQuiz = () => {
     fetchQuizData();
   }, [id, user, navigate, toast]);
 
-  // Сохраняем основную информацию о тесте
   const handleSaveQuiz = async () => {
     if (!id || !user || !quiz) return;
     
@@ -172,7 +171,7 @@ const EditQuiz = () => {
           description
         })
         .eq('id', id)
-        .eq('user_id', user.id);
+        .eq('created_by', user.id);
       
       if (error) throw error;
       
@@ -198,7 +197,6 @@ const EditQuiz = () => {
     }
   };
 
-  // Добавляем новый вопрос
   const handleAddQuestion = async () => {
     if (!id || !user) return;
     
@@ -235,7 +233,6 @@ const EditQuiz = () => {
     try {
       setIsAddingQuestion(true);
       
-      // 1. Добавляем вопрос
       const { data: questionData, error: questionError } = await supabase
         .from('questions')
         .insert({
@@ -248,7 +245,6 @@ const EditQuiz = () => {
       
       if (questionError) throw questionError;
       
-      // 2. Добавляем варианты ответов
       const filteredAnswers = newAnswers.filter(a => a.text.trim() !== '');
       
       const answersToInsert = filteredAnswers.map(answer => ({
@@ -264,7 +260,6 @@ const EditQuiz = () => {
       
       if (answersError) throw answersError;
       
-      // 3. Обновляем локальное состояние
       const newQuestion: QuestionWithAnswers = {
         id: questionData.id,
         quiz_id: id,
@@ -276,7 +271,6 @@ const EditQuiz = () => {
       
       setQuestions([...questions, newQuestion]);
       
-      // 4. Сбрасываем форму
       setNewQuestionText('');
       setNewAnswers([
         { text: '', isCorrect: true },
@@ -285,7 +279,6 @@ const EditQuiz = () => {
         { text: '', isCorrect: false }
       ]);
       
-      // 5. Закрываем диалог
       document.getElementById('closeAddQuestionDialog')?.click();
       
       toast({
@@ -304,12 +297,10 @@ const EditQuiz = () => {
     }
   };
 
-  // Удаляем вопрос
   const handleDeleteQuestion = async (questionId: string) => {
     if (!id || !user) return;
     
     try {
-      // 1. Удаляем ответы
       const { error: answersError } = await supabase
         .from('answers')
         .delete()
@@ -317,7 +308,6 @@ const EditQuiz = () => {
       
       if (answersError) throw answersError;
       
-      // 2. Удаляем вопрос
       const { error: questionError } = await supabase
         .from('questions')
         .delete()
@@ -326,10 +316,8 @@ const EditQuiz = () => {
       
       if (questionError) throw questionError;
       
-      // 3. Обновляем локальное состояние
       setQuestions(questions.filter(q => q.id !== questionId));
       
-      // 4. Переупорядочиваем оставшиеся вопросы
       const updatedQuestions = questions.filter(q => q.id !== questionId).map((q, index) => ({
         ...q,
         order_position: index
@@ -358,7 +346,6 @@ const EditQuiz = () => {
     }
   };
 
-  // Публикуем или снимаем публикацию теста
   const handlePublishToggle = async () => {
     if (!id || !user || !quiz) return;
     
@@ -382,7 +369,7 @@ const EditQuiz = () => {
           is_published: newPublishState
         })
         .eq('id', id)
-        .eq('user_id', user.id);
+        .eq('created_by', user.id);
       
       if (error) throw error;
       
@@ -605,7 +592,86 @@ const EditQuiz = () => {
                     Добавить первый вопрос
                   </Button>
                 </DialogTrigger>
-                {/* Контент диалога такой же, как выше */}
+                <DialogContent className="max-w-xl">
+                  <DialogHeader>
+                    <DialogTitle>Новый вопрос</DialogTitle>
+                    <DialogDescription>
+                      Добавьте текст вопроса и варианты ответов. Отметьте правильные ответы.
+                    </DialogDescription>
+                  </DialogHeader>
+                  
+                  <div className="space-y-6 py-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="questionText">Текст вопроса</Label>
+                      <Textarea
+                        id="questionText"
+                        placeholder="Введите текст вопроса"
+                        className="min-h-[80px]"
+                      />
+                    </div>
+                    
+                    <div className="space-y-4">
+                      <Label>Варианты ответов</Label>
+                      {newAnswers.map((answer, index) => (
+                        <div key={index} className="flex items-center gap-2">
+                          <div className="flex-grow">
+                            <Input
+                              placeholder={`Вариант ответа ${index + 1}`}
+                              value={answer.text}
+                              onChange={(e) => {
+                                const updatedAnswers = [...newAnswers];
+                                updatedAnswers[index].text = e.target.value;
+                                setNewAnswers(updatedAnswers);
+                              }}
+                            />
+                          </div>
+                          
+                          <Button
+                            type="button"
+                            variant={answer.isCorrect ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => {
+                              const updatedAnswers = newAnswers.map((a, i) => ({
+                                ...a,
+                                isCorrect: i === index
+                              }));
+                              setNewAnswers(updatedAnswers);
+                            }}
+                            className="min-w-[120px]"
+                          >
+                            {answer.isCorrect ? (
+                              <>
+                                <Check className="mr-2 h-4 w-4" />
+                                Правильный
+                              </>
+                            ) : (
+                              "Отметить"
+                            )}
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  
+                  <DialogFooter>
+                    <DialogClose asChild>
+                      <Button variant="outline" id="closeAddQuestionDialog">Отмена</Button>
+                    </DialogClose>
+                    <Button 
+                      onClick={handleAddQuestion}
+                      disabled={isAddingQuestion || !newQuestionText.trim()}
+                    >
+                      {isAddingQuestion ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Добавление...
+                        </>
+                      ) : (
+                        "Добавить вопрос"
+                      )}
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
               </Dialog>
             </Card>
           ) : (

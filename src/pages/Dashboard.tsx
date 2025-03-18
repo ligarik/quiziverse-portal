@@ -62,12 +62,18 @@ const Dashboard = () => {
         const { data, error } = await supabase
           .from('quizzes')
           .select('*')
-          .eq('user_id', user.id)
+          .eq('created_by', user.id) // Changed from user_id to created_by
           .order('created_at', { ascending: false });
         
         if (error) throw error;
         
-        setQuizzes(data || []);
+        // Ensure all quizzes have is_published property
+        const quizzesWithPublishState = (data || []).map(quiz => ({
+          ...quiz,
+          is_published: quiz.is_published || false // Default to false if not set
+        }));
+        
+        setQuizzes(quizzesWithPublishState);
       } catch (error) {
         console.error('Ошибка при загрузке тестов:', error);
         toast({
@@ -140,7 +146,7 @@ const Dashboard = () => {
         .from('quizzes')
         .delete()
         .eq('id', quizId)
-        .eq('user_id', user.id);
+        .eq('created_by', user.id); // Changed from user_id to created_by
       
       if (error) throw error;
       
