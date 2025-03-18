@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
@@ -45,26 +46,36 @@ const CreateQuiz = () => {
     try {
       setIsCreating(true);
       
-      // Создаем тест в Supabase
+      // Log the database operation for debugging
+      console.log('Attempting to create quiz with:', {
+        title,
+        description,
+        created_by: user.id
+      });
+      
+      // Create quiz in Supabase with only the columns that actually exist
       const { data: quiz, error } = await supabase
         .from('quizzes')
         .insert({
           title,
           description,
-          user_id: user.id,
-          is_published: false
+          created_by: user.id, // Using created_by instead of user_id
+          // Removing is_published as it doesn't exist in the schema
         })
         .select()
         .single();
       
-      if (error) throw error;
+      if (error) {
+        console.error('Error details:', error);
+        throw error;
+      }
       
       toast({
         title: 'Тест создан',
         description: 'Ваш тест был успешно создан. Теперь вы можете добавить вопросы.',
       });
       
-      // Перенаправляем на страницу редактирования теста
+      // Redirect to the quiz edit page
       navigate(`/quiz/edit/${quiz.id}`);
     } catch (error) {
       console.error('Ошибка при создании теста:', error);
