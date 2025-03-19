@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
@@ -276,7 +277,7 @@ const TakeQuiz = () => {
                   <div className="space-y-6">
                     <div>
                       <h3 className="text-lg font-semibold mb-4">
-                        {currentQuestion.text}
+                        {currentQuestion.question_text}
                       </h3>
                       
                       <div className="space-y-3">
