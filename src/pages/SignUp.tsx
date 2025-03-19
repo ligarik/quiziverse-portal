@@ -17,6 +17,7 @@ const SignUp = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   
   const { signUp } = useAuth();
   const navigate = useNavigate();
@@ -24,6 +25,7 @@ const SignUp = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setSuccess('');
     
     // Validate inputs
     if (!email || !password || !confirmPassword) {
@@ -43,8 +45,14 @@ const SignUp = () => {
     
     try {
       setIsLoading(true);
-      await signUp(email, password);
-      // Note: We don't immediately navigate after signup because the user might need to verify their email
+      const result = await signUp(email, password);
+      
+      if (result.success) {
+        setSuccess(result.message);
+        // Не перенаправляем пользователя после регистрации, так как ему нужно подтвердить email
+      } else {
+        setError(result.message);
+      }
     } catch (error) {
       console.error('Error in signup form:', error);
       setError('Произошла ошибка при регистрации. Пожалуйста, попробуйте еще раз.');
@@ -67,70 +75,86 @@ const SignUp = () => {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="email">Электронная почта</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    placeholder="name@example.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
-                  />
+              {success ? (
+                <div className="bg-green-50 text-green-800 rounded-md p-4 mb-4">
+                  <p className="font-medium">{success}</p>
+                  <p className="mt-2">
+                    Пожалуйста, проверьте вашу электронную почту и следуйте инструкциям для завершения регистрации.
+                  </p>
+                  <Button 
+                    variant="link" 
+                    className="mt-2 p-0" 
+                    onClick={() => navigate('/login')}
+                  >
+                    Перейти на страницу входа
+                  </Button>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="password">Пароль</Label>
-                  <div className="relative">
+              ) : (
+                <form onSubmit={handleSubmit} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="email">Электронная почта</Label>
                     <Input
-                      id="password"
-                      type={showPassword ? "text" : "password"}
-                      placeholder="••••••••"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
+                      id="email"
+                      type="email"
+                      placeholder="name@example.com"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
                       required
                     />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                      aria-label={showPassword ? "Скрыть пароль" : "Показать пароль"}
-                    >
-                      {showPassword ? (
-                        <EyeOff className="h-4 w-4" />
-                      ) : (
-                        <Eye className="h-4 w-4" />
-                      )}
-                    </button>
                   </div>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="confirmPassword">Подтвердите пароль</Label>
-                  <Input
-                    id="confirmPassword"
-                    type={showPassword ? "text" : "password"}
-                    placeholder="••••••••"
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    required
-                  />
-                </div>
-                
-                {error && (
-                  <div className="text-sm text-destructive">{error}</div>
-                )}
-                
-                <Button type="submit" className="w-full" disabled={isLoading}>
-                  {isLoading ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Регистрация...
-                    </>
-                  ) : (
-                    "Зарегистрироваться"
+                  <div className="space-y-2">
+                    <Label htmlFor="password">Пароль</Label>
+                    <div className="relative">
+                      <Input
+                        id="password"
+                        type={showPassword ? "text" : "password"}
+                        placeholder="••••••••"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        required
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                        aria-label={showPassword ? "Скрыть пароль" : "Показать пароль"}
+                      >
+                        {showPassword ? (
+                          <EyeOff className="h-4 w-4" />
+                        ) : (
+                          <Eye className="h-4 w-4" />
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="confirmPassword">Подтвердите пароль</Label>
+                    <Input
+                      id="confirmPassword"
+                      type={showPassword ? "text" : "password"}
+                      placeholder="••••••••"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      required
+                    />
+                  </div>
+                  
+                  {error && (
+                    <div className="text-sm text-destructive">{error}</div>
                   )}
-                </Button>
-              </form>
+                  
+                  <Button type="submit" className="w-full" disabled={isLoading}>
+                    {isLoading ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Регистрация...
+                      </>
+                    ) : (
+                      "Зарегистрироваться"
+                    )}
+                  </Button>
+                </form>
+              )}
               
               <div className="mt-4 text-center text-sm">
                 Регистрируясь, вы соглашаетесь с нашими{" "}

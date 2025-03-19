@@ -8,7 +8,7 @@ type AuthContextType = {
   session: Session | null;
   user: User | null;
   loading: boolean;
-  signUp: (email: string, password: string) => Promise<void>;
+  signUp: (email: string, password: string) => Promise<{ success: boolean; message: string }>;
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
 };
@@ -58,29 +58,73 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
-  async function signUp(email: string, password: string) {
+  async function signUp(email: string, password: string): Promise<{ success: boolean; message: string }> {
     try {
-      const { error } = await supabase.auth.signUp({
+      // Проверка корректности email
+      if (!email || !email.includes('@') || !email.includes('.')) {
+        toast({
+          title: 'Ошибка при регистрации',
+          description: 'Пожалуйста, введите корректный email-адрес',
+          variant: 'destructive',
+        });
+        return { success: false, message: 'Некорректный email-адрес' };
+      }
+
+      // Проверка пароля
+      if (!password || password.length < 6) {
+        toast({
+          title: 'Ошибка при регистрации',
+          description: 'Пароль должен содержать не менее 6 символов',
+          variant: 'destructive',
+        });
+        return { success: false, message: 'Пароль должен содержать не менее 6 символов' };
+      }
+
+      console.log('Starting sign up process for:', email);
+      
+      const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
-          emailRedirectTo: window.location.origin + '/login',
+          emailRedirectTo: `${window.location.origin}/login`,
         }
       });
       
+      console.log('Sign up response:', { data, error });
+      
       if (error) {
+        console.error('Error in signUp:', error);
         toast({
           title: 'Ошибка при регистрации',
           description: error.message,
           variant: 'destructive',
         });
-        return;
+        return { success: false, message: error.message };
+      }
+      
+      // Проверка, нужно ли подтверждение по email
+      if (data.user && data.user.identities && data.user.identities.length === 0) {
+        toast({
+          title: 'Пользователь уже существует',
+          description: 'Этот email уже зарегистрирован. Попробуйте войти или восстановить пароль.',
+          variant: 'destructive',
+        });
+        return { success: false, message: 'Этот email уже зарегистрирован' };
+      }
+      
+      if (data.user && !data.user.email_confirmed_at) {
+        toast({
+          title: 'Почти готово!',
+          description: 'Пожалуйста, проверьте вашу электронную почту для подтверждения регистрации',
+        });
+        return { success: true, message: 'Проверьте вашу электронную почту' };
       }
       
       toast({
         title: 'Регистрация успешна',
-        description: 'Пожалуйста, проверьте вашу электронную почту для подтверждения регистрации',
+        description: 'Вы успешно зарегистрировались в системе',
       });
+      return { success: true, message: 'Регистрация успешна' };
     } catch (error) {
       console.error('Unexpected error during signUp:', error);
       toast({
@@ -88,17 +132,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         description: 'Произошла непредвиденная ошибка при регистрации',
         variant: 'destructive',
       });
+      return { success: false, message: 'Произошла непредвиденная ошибка' };
     }
   }
 
   async function signIn(email: string, password: string) {
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      console.log('Starting sign in process for:', email);
+      
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
       
+      console.log('Sign in response:', { data, error });
+      
       if (error) {
+        console.error('Error in signIn:', error);
         toast({
           title: 'Ошибка при входе',
           description: error.message,
@@ -123,7 +173,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   async function signOut() {
     try {
-      await supabase.auth.signOut();
+      const { error } = await supabase.auth.signOut();
+      
+      if (error) {
+        console.error('Error in signOut:', error);
+        toast({
+          title: 'Ошибка при выходе',
+          description: error.message,
+          variant: 'destructive',
+        });
+        return;
+      }
+      
       toast({
         title: 'Выход выполнен',
         description: 'Вы успешно вышли из системы',
