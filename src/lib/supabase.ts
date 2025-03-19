@@ -23,12 +23,19 @@ export type Quiz = {
   is_published?: boolean; // Add the is_published property
 };
 
+export enum QuestionType {
+  SINGLE_CHOICE = 'single_choice',
+  MULTIPLE_CHOICE = 'multiple_choice',
+  TRUE_FALSE = 'true_false'
+}
+
 export type Question = {
   id: string;
   quiz_id: string;
-  question_text: string;
+  text: string; // Changed from question_text to text based on the error
   created_at: string;
-  // Удаляем поле order_position, так как его нет в базе данных
+  question_type: QuestionType;
+  image_url?: string; // Add field for image attachments
 };
 
 export type Answer = {

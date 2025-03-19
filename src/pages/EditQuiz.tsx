@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
@@ -23,30 +24,20 @@ import {
   DialogTrigger,
   DialogClose
 } from '@/components/ui/dialog';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow
-} from '@/components/ui/table';
 import { 
   Loader2, 
   ArrowLeft, 
   Plus, 
-  Trash2, 
-  GripVertical, 
-  Edit, 
   Check, 
   Save,
-  ArrowUpDown
 } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/lib/supabase';
-import { Quiz, Question, Answer } from '@/lib/supabase';
+import { Quiz, Question, Answer, QuestionType } from '@/lib/supabase';
+import QuestionForm from '@/components/QuestionForm';
+import QuestionItem from '@/components/QuestionItem';
 
 interface QuestionWithAnswers extends Question {
   answers: Answer[];
@@ -60,13 +51,6 @@ const EditQuiz = () => {
   const [description, setDescription] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [newQuestionText, setNewQuestionText] = useState('');
-  const [newAnswers, setNewAnswers] = useState<{ text: string; isCorrect: boolean }[]>([
-    { text: '', isCorrect: true },
-    { text: '', isCorrect: false },
-    { text: '', isCorrect: false },
-    { text: '', isCorrect: false }
-  ]);
   const [isAddingQuestion, setIsAddingQuestion] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
   
@@ -196,102 +180,9 @@ const EditQuiz = () => {
     }
   };
 
-  const handleAddQuestion = async () => {
-    if (!id || !user) return;
-    
-    if (!newQuestionText.trim()) {
-      toast({
-        title: 'Ошибка',
-        description: 'Текст вопроса не может быть пустым',
-        variant: 'destructive',
-      });
-      return;
-    }
-    
-    const hasValidAnswers = newAnswers.some(a => a.text.trim() !== '');
-    const hasCorrectAnswer = newAnswers.some(a => a.isCorrect && a.text.trim() !== '');
-    
-    if (!hasValidAnswers) {
-      toast({
-        title: 'Ошибка',
-        description: 'Добавьте хотя бы один вариант ответа',
-        variant: 'destructive',
-      });
-      return;
-    }
-    
-    if (!hasCorrectAnswer) {
-      toast({
-        title: 'Ошибка',
-        description: 'Отметьте хотя бы один правильный ответ',
-        variant: 'destructive',
-      });
-      return;
-    }
-    
-    try {
-      setIsAddingQuestion(true);
-      
-      const { data: questionData, error: questionError } = await supabase
-        .from('questions')
-        .insert({
-          quiz_id: id,
-          question_text: newQuestionText
-        })
-        .select('id')
-        .single();
-      
-      if (questionError) throw questionError;
-      
-      const filteredAnswers = newAnswers.filter(a => a.text.trim() !== '');
-      
-      const answersToInsert = filteredAnswers.map(answer => ({
-        question_id: questionData.id,
-        answer_text: answer.text,
-        is_correct: answer.isCorrect
-      }));
-      
-      const { data: answersData, error: answersError } = await supabase
-        .from('answers')
-        .insert(answersToInsert)
-        .select('*');
-      
-      if (answersError) throw answersError;
-      
-      const newQuestion: QuestionWithAnswers = {
-        id: questionData.id,
-        quiz_id: id,
-        question_text: newQuestionText,
-        created_at: new Date().toISOString(),
-        answers: answersData || []
-      };
-      
-      setQuestions([...questions, newQuestion]);
-      
-      setNewQuestionText('');
-      setNewAnswers([
-        { text: '', isCorrect: true },
-        { text: '', isCorrect: false },
-        { text: '', isCorrect: false },
-        { text: '', isCorrect: false }
-      ]);
-      
-      document.getElementById('closeAddQuestionDialog')?.click();
-      
-      toast({
-        title: 'Вопрос добавлен',
-        description: 'Новый вопрос успешно добавлен в тест',
-      });
-    } catch (error) {
-      console.error('Ошибка при добавлении вопроса:', error);
-      toast({
-        title: 'Ошибка',
-        description: 'Не удалось добавить вопрос',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsAddingQuestion(false);
-    }
+  const handleQuestionAdded = (newQuestion: QuestionWithAnswers) => {
+    setQuestions([...questions, newQuestion]);
+    document.getElementById('closeAddQuestionDialog')?.click();
   };
 
   const handleDeleteQuestion = async (questionId: string) => {
@@ -480,86 +371,26 @@ const EditQuiz = () => {
                   Добавить вопрос
                 </Button>
               </DialogTrigger>
-              <DialogContent className="max-w-xl">
+              <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                   <DialogTitle>Новый вопрос</DialogTitle>
                   <DialogDescription>
-                    Добавьте текст вопроса и варианты ответов. Отметьте правильные ответы.
+                    Добавьте текст вопроса, выберите тип и варианты ответов.
                   </DialogDescription>
                 </DialogHeader>
                 
-                <div className="space-y-6 py-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="questionText">Текст вопроса</Label>
-                    <Textarea
-                      id="questionText"
-                      placeholder="Введите текст вопроса"
-                      value={newQuestionText}
-                      onChange={(e) => setNewQuestionText(e.target.value)}
-                      className="min-h-[80px]"
-                    />
-                  </div>
-                  
-                  <div className="space-y-4">
-                    <Label>Варианты ответов</Label>
-                    {newAnswers.map((answer, index) => (
-                      <div key={index} className="flex items-center gap-2">
-                        <div className="flex-grow">
-                          <Input
-                            placeholder={`Вариант ответа ${index + 1}`}
-                            value={answer.text}
-                            onChange={(e) => {
-                              const updatedAnswers = [...newAnswers];
-                              updatedAnswers[index].text = e.target.value;
-                              setNewAnswers(updatedAnswers);
-                            }}
-                          />
-                        </div>
-                        
-                        <Button
-                          type="button"
-                          variant={answer.isCorrect ? "default" : "outline"}
-                          size="sm"
-                          onClick={() => {
-                            const updatedAnswers = newAnswers.map((a, i) => ({
-                              ...a,
-                              isCorrect: i === index
-                            }));
-                            setNewAnswers(updatedAnswers);
-                          }}
-                          className="min-w-[120px]"
-                        >
-                          {answer.isCorrect ? (
-                            <>
-                              <Check className="mr-2 h-4 w-4" />
-                              Правильный
-                            </>
-                          ) : (
-                            "Отметить"
-                          )}
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
+                <div className="py-4">
+                  <QuestionForm 
+                    quizId={id || ''} 
+                    onQuestionAdded={handleQuestionAdded}
+                    onCancel={() => document.getElementById('closeAddQuestionDialog')?.click()}
+                  />
                 </div>
                 
-                <DialogFooter>
+                <DialogFooter className="hidden">
                   <DialogClose asChild>
-                    <Button variant="outline" id="closeAddQuestionDialog">Отмена</Button>
+                    <Button id="closeAddQuestionDialog">Закрыть</Button>
                   </DialogClose>
-                  <Button 
-                    onClick={handleAddQuestion}
-                    disabled={isAddingQuestion || !newQuestionText.trim()}
-                  >
-                    {isAddingQuestion ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Добавление...
-                      </>
-                    ) : (
-                      "Добавить вопрос"
-                    )}
-                  </Button>
                 </DialogFooter>
               </DialogContent>
             </Dialog>
@@ -575,130 +406,41 @@ const EditQuiz = () => {
                     Добавить первый вопрос
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="max-w-xl">
+                <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
                   <DialogHeader>
                     <DialogTitle>Новый вопрос</DialogTitle>
                     <DialogDescription>
-                      Добавьте текст вопроса и варианты ответов. Отметьте правильные ответы.
+                      Добавьте текст вопроса, выберите тип и варианты ответов.
                     </DialogDescription>
                   </DialogHeader>
                   
-                  <div className="space-y-6 py-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="questionText">Текст вопроса</Label>
-                      <Textarea
-                        id="questionText"
-                        placeholder="Введите текст вопроса"
-                        className="min-h-[80px]"
-                      />
-                    </div>
-                    
-                    <div className="space-y-4">
-                      <Label>Варианты ответов</Label>
-                      {newAnswers.map((answer, index) => (
-                        <div key={index} className="flex items-center gap-2">
-                          <div className="flex-grow">
-                            <Input
-                              placeholder={`Вариант ответа ${index + 1}`}
-                              value={answer.text}
-                              onChange={(e) => {
-                                const updatedAnswers = [...newAnswers];
-                                updatedAnswers[index].text = e.target.value;
-                                setNewAnswers(updatedAnswers);
-                              }}
-                            />
-                          </div>
-                          
-                          <Button
-                            type="button"
-                            variant={answer.isCorrect ? "default" : "outline"}
-                            size="sm"
-                            onClick={() => {
-                              const updatedAnswers = newAnswers.map((a, i) => ({
-                                ...a,
-                                isCorrect: i === index
-                              }));
-                              setNewAnswers(updatedAnswers);
-                            }}
-                            className="min-w-[120px]"
-                          >
-                            {answer.isCorrect ? (
-                              <>
-                                <Check className="mr-2 h-4 w-4" />
-                                Правильный
-                              </>
-                            ) : (
-                              "Отметить"
-                            )}
-                          </Button>
-                        </div>
-                      ))}
-                    </div>
+                  <div className="py-4">
+                    <QuestionForm 
+                      quizId={id || ''} 
+                      onQuestionAdded={handleQuestionAdded}
+                      onCancel={() => document.getElementById('closeAddQuestionDialog')?.click()}
+                    />
                   </div>
                   
-                  <DialogFooter>
+                  <DialogFooter className="hidden">
                     <DialogClose asChild>
-                      <Button variant="outline" id="closeAddQuestionDialog">Отмена</Button>
+                      <Button id="closeAddQuestionDialog">Закрыть</Button>
                     </DialogClose>
-                    <Button 
-                      onClick={handleAddQuestion}
-                      disabled={isAddingQuestion || !newQuestionText.trim()}
-                    >
-                      {isAddingQuestion ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Добавление...
-                        </>
-                      ) : (
-                        "Добавить вопрос"
-                      )}
-                    </Button>
                   </DialogFooter>
                 </DialogContent>
               </Dialog>
             </Card>
           ) : (
-            <Card>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-[50px]">#</TableHead>
-                    <TableHead>Вопрос</TableHead>
-                    <TableHead className="w-[120px] text-right">Действия</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {questions.map((question, index) => (
-                    <TableRow key={question.id}>
-                      <TableCell className="font-medium">{index + 1}</TableCell>
-                      <TableCell>
-                        <div>
-                          <p className="font-medium">{question.question_text}</p>
-                          <div className="mt-2 space-y-1">
-                            {question.answers.map((answer, aIndex) => (
-                              <p key={answer.id} className={`text-sm ${answer.is_correct ? 'text-green-600 font-medium' : 'text-muted-foreground'}`}>
-                                {aIndex + 1}. {answer.answer_text} 
-                                {answer.is_correct && ' ✓'}
-                              </p>
-                            ))}
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleDeleteQuestion(question.id)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                          <span className="sr-only">Удалить вопрос</span>
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </Card>
+            <div className="space-y-4">
+              {questions.map((question, index) => (
+                <QuestionItem 
+                  key={question.id} 
+                  question={question} 
+                  index={index} 
+                  onDelete={handleDeleteQuestion} 
+                />
+              ))}
+            </div>
           )}
         </div>
       </main>
