@@ -139,13 +139,13 @@ const QuestionForm = ({ quizId, onQuestionAdded, onCancel }: QuestionFormProps) 
     try {
       setIsLoading(true);
       
+      // Обновляем название поля с text на question_text
       const { data: questionData, error: questionError } = await supabase
         .from('questions')
         .insert({
           quiz_id: quizId,
-          text: questionText,
+          question_text: questionText, // Изменено с text на question_text
           question_type: questionType
-          // Удалили image_url, так как нет такой колонки в базе данных
         })
         .select('id')
         .single();
@@ -168,7 +168,7 @@ const QuestionForm = ({ quizId, onQuestionAdded, onCancel }: QuestionFormProps) 
       const newQuestion = {
         id: questionData.id,
         quiz_id: quizId,
-        text: questionText,
+        question_text: questionText, // Изменено с text на question_text
         question_type: questionType,
         created_at: new Date().toISOString(),
         answers: answersData || []

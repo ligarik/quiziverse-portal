@@ -44,7 +44,7 @@ const QuestionItem = ({ question, index, onDelete }: QuestionItemProps) => {
             className="p-0 h-auto font-medium text-left"
             onClick={() => setExpanded(!expanded)}
           >
-            {question.text}
+            {question.question_text} {/* Изменено с text на question_text */}
             {expanded ? (
               <ChevronUp className="ml-2 h-4 w-4" />
             ) : (

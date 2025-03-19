@@ -32,10 +32,9 @@ export enum QuestionType {
 export type Question = {
   id: string;
   quiz_id: string;
-  text: string; // Uses text as per database schema
+  question_text: string; // Изменено с text на question_text, чтобы соответствовать названию колонки в базе данных
   created_at: string;
   question_type: QuestionType;
-  // Removed image_url as it doesn't exist in the database schema
 };
 
 export type Answer = {
