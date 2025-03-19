@@ -1,10 +1,11 @@
+
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Check, Loader2, Image as ImageIcon } from 'lucide-react';
+import { Check, Loader2 } from 'lucide-react';
 import { QuestionType } from '@/lib/supabase';
 import { supabase } from '@/lib/supabase';
 import { useToast } from '@/components/ui/use-toast';
@@ -29,33 +30,9 @@ const QuestionForm = ({ quizId, onQuestionAdded, onCancel }: QuestionFormProps) 
     { text: '', isCorrect: false },
     { text: '', isCorrect: false }
   ]);
-  const [imageFile, setImageFile] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0);
   
   const { toast } = useToast();
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      if (file.size > 5 * 1024 * 1024) {
-        toast({
-          title: 'Файл слишком большой',
-          description: 'Размер файла не должен превышать 5MB',
-          variant: 'destructive',
-        });
-        return;
-      }
-      
-      setImageFile(file);
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        setImagePreview(e.target?.result as string);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
 
   const handleAnswerChange = (index: number, text: string) => {
     const newAnswers = [...answers];
@@ -162,54 +139,13 @@ const QuestionForm = ({ quizId, onQuestionAdded, onCancel }: QuestionFormProps) 
     try {
       setIsLoading(true);
       
-      let imageUrl = null;
-      if (imageFile) {
-        const { data: buckets } = await supabase
-          .storage
-          .listBuckets();
-          
-        const bucketExists = buckets?.some(bucket => bucket.name === 'quiz-assets');
-        
-        if (!bucketExists) {
-          const { error: createBucketError } = await supabase
-            .storage
-            .createBucket('quiz-assets', {
-              public: true
-            });
-            
-          if (createBucketError) {
-            console.error('Error creating bucket:', createBucketError);
-            throw createBucketError;
-          }
-        }
-        
-        const fileExt = imageFile.name.split('.').pop();
-        const fileName = `${Date.now()}.${fileExt}`;
-        const filePath = `quiz-images/${quizId}/${fileName}`;
-        
-        const { error: uploadError, data } = await supabase.storage
-          .from('quiz-assets')
-          .upload(filePath, imageFile, {
-            cacheControl: '3600',
-            upsert: false
-          });
-          
-        if (uploadError) throw uploadError;
-        
-        const { data: publicUrl } = supabase.storage
-          .from('quiz-assets')
-          .getPublicUrl(filePath);
-          
-        imageUrl = publicUrl.publicUrl;
-      }
-      
       const { data: questionData, error: questionError } = await supabase
         .from('questions')
         .insert({
           quiz_id: quizId,
           text: questionText,
-          question_type: questionType,
-          image_url: imageUrl
+          question_type: questionType
+          // Удалили image_url, так как нет такой колонки в базе данных
         })
         .select('id')
         .single();
@@ -234,7 +170,6 @@ const QuestionForm = ({ quizId, onQuestionAdded, onCancel }: QuestionFormProps) 
         quiz_id: quizId,
         text: questionText,
         question_type: questionType,
-        image_url: imageUrl,
         created_at: new Date().toISOString(),
         answers: answersData || []
       };
@@ -254,7 +189,6 @@ const QuestionForm = ({ quizId, onQuestionAdded, onCancel }: QuestionFormProps) 
       });
     } finally {
       setIsLoading(false);
-      setUploadProgress(0);
     }
   };
 
@@ -291,55 +225,6 @@ const QuestionForm = ({ quizId, onQuestionAdded, onCancel }: QuestionFormProps) 
           onChange={(e) => setQuestionText(e.target.value)}
           className="min-h-[80px]"
         />
-      </div>
-      
-      <div className="space-y-2">
-        <Label htmlFor="questionImage">Изображение (опционально)</Label>
-        <div className="flex items-center space-x-2">
-          <Button 
-            type="button" 
-            variant="outline" 
-            onClick={() => document.getElementById('questionImage')?.click()}
-            className="flex items-center"
-          >
-            <ImageIcon className="mr-2 h-4 w-4" />
-            {imageFile ? 'Изменить изображение' : 'Добавить изображение'}
-          </Button>
-          {imageFile && (
-            <span className="text-sm text-muted-foreground">
-              {imageFile.name} ({Math.round(imageFile.size / 1024)} KB)
-            </span>
-          )}
-          <Input
-            id="questionImage"
-            type="file"
-            accept="image/*"
-            onChange={handleFileChange}
-            className="hidden"
-          />
-        </div>
-        
-        {imagePreview && (
-          <div className="mt-2 relative">
-            <img 
-              src={imagePreview} 
-              alt="Preview" 
-              className="max-h-[200px] rounded-md object-contain border border-border" 
-            />
-            <Button
-              type="button"
-              variant="destructive"
-              size="sm"
-              className="absolute top-2 right-2"
-              onClick={() => {
-                setImageFile(null);
-                setImagePreview(null);
-              }}
-            >
-              Удалить
-            </Button>
-          </div>
-        )}
       </div>
       
       <div className="space-y-4">
@@ -416,9 +301,7 @@ const QuestionForm = ({ quizId, onQuestionAdded, onCancel }: QuestionFormProps) 
           {isLoading ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              {uploadProgress > 0 && uploadProgress < 100 
-                ? `Загрузка ${uploadProgress}%` 
-                : 'Добавление...'}
+              Добавление...
             </>
           ) : (
             "Добавить вопрос"
