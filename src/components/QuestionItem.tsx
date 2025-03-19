@@ -1,13 +1,12 @@
 
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Trash2, Image as ImageIcon, ChevronDown, ChevronUp } from 'lucide-react';
+import { Trash2, ChevronDown, ChevronUp } from 'lucide-react';
 import { 
   Card,
   CardContent,
   CardHeader,
   CardTitle,
-  CardFooter
 } from '@/components/ui/card';
 import { Question, Answer, QuestionType } from '@/lib/supabase';
 
@@ -52,9 +51,6 @@ const QuestionItem = ({ question, index, onDelete }: QuestionItemProps) => {
               <ChevronDown className="ml-2 h-4 w-4" />
             )}
           </Button>
-          {question.image_url && (
-            <ImageIcon className="h-4 w-4 text-muted-foreground" />
-          )}
         </CardTitle>
         <div className="flex items-center gap-2">
           <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded-md">
@@ -72,33 +68,21 @@ const QuestionItem = ({ question, index, onDelete }: QuestionItemProps) => {
       </CardHeader>
       
       {expanded && (
-        <>
-          {question.image_url && (
-            <div className="px-6 pb-2">
-              <img 
-                src={question.image_url} 
-                alt="Question" 
-                className="max-h-[200px] object-contain rounded-md" 
-              />
-            </div>
-          )}
-          
-          <CardContent className="py-2">
-            <div className="space-y-1">
-              {question.answers.map((answer, aIndex) => (
-                <div 
-                  key={answer.id} 
-                  className={`p-2 rounded-md ${answer.is_correct ? 'bg-primary/10 border border-primary/30' : 'bg-muted/50'}`}
-                >
-                  <p className={`text-sm ${answer.is_correct ? 'text-primary font-medium' : ''}`}>
-                    {aIndex + 1}. {answer.answer_text} 
-                    {answer.is_correct && ' ✓'}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </>
+        <CardContent className="py-2">
+          <div className="space-y-1">
+            {question.answers.map((answer, aIndex) => (
+              <div 
+                key={answer.id} 
+                className={`p-2 rounded-md ${answer.is_correct ? 'bg-primary/10 border border-primary/30' : 'bg-muted/50'}`}
+              >
+                <p className={`text-sm ${answer.is_correct ? 'text-primary font-medium' : ''}`}>
+                  {aIndex + 1}. {answer.answer_text} 
+                  {answer.is_correct && ' ✓'}
+                </p>
+              </div>
+            ))}
+          </div>
+        </CardContent>
       )}
     </Card>
   );
