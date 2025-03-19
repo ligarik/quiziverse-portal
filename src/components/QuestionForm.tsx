@@ -164,6 +164,25 @@ const QuestionForm = ({ quizId, onQuestionAdded, onCancel }: QuestionFormProps) 
       
       let imageUrl = null;
       if (imageFile) {
+        const { data: buckets } = await supabase
+          .storage
+          .listBuckets();
+          
+        const bucketExists = buckets?.some(bucket => bucket.name === 'quiz-assets');
+        
+        if (!bucketExists) {
+          const { error: createBucketError } = await supabase
+            .storage
+            .createBucket('quiz-assets', {
+              public: true
+            });
+            
+          if (createBucketError) {
+            console.error('Error creating bucket:', createBucketError);
+            throw createBucketError;
+          }
+        }
+        
         const fileExt = imageFile.name.split('.').pop();
         const fileName = `${Date.now()}.${fileExt}`;
         const filePath = `quiz-images/${quizId}/${fileName}`;
