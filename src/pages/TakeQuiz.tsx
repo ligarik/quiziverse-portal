@@ -37,7 +37,6 @@ const TakeQuiz = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  // Загружаем информацию о тесте и вопросах
   useEffect(() => {
     const fetchQuizData = async () => {
       if (!id) return;
@@ -45,7 +44,6 @@ const TakeQuiz = () => {
       try {
         setIsLoading(true);
         
-        // Получаем основную информацию о тесте
         const { data: quizData, error: quizError } = await supabase
           .from('quizzes')
           .select('*')
@@ -65,7 +63,6 @@ const TakeQuiz = () => {
           return;
         }
         
-        // Получаем вопросы для теста - удаляем сортировку по order_position, которой нет
         const { data: questionsData, error: questionsError } = await supabase
           .from('questions')
           .select('*')
@@ -73,7 +70,6 @@ const TakeQuiz = () => {
         
         if (questionsError) throw questionsError;
         
-        // Получаем ответы для всех вопросов
         const questionsWithAnswers: QuestionWithAnswers[] = [];
         
         for (const question of questionsData || []) {
@@ -93,7 +89,6 @@ const TakeQuiz = () => {
         setQuiz(quizData);
         setQuestions(questionsWithAnswers);
         
-        // Создаем запись о попытке прохождения теста
         if (user) {
           const { data: attemptData, error: attemptError } = await supabase
             .from('quiz_attempts')
@@ -126,21 +121,18 @@ const TakeQuiz = () => {
     fetchQuizData();
   }, [id, user, navigate, toast]);
 
-  // Переход к следующему вопросу
   const handleNextQuestion = () => {
     if (currentQuestionIndex < questions.length - 1) {
       setCurrentQuestionIndex(currentQuestionIndex + 1);
     }
   };
 
-  // Переход к предыдущему вопросу
   const handlePrevQuestion = () => {
     if (currentQuestionIndex > 0) {
       setCurrentQuestionIndex(currentQuestionIndex - 1);
     }
   };
 
-  // Выбор ответа
   const handleSelectAnswer = (questionId: string, answerId: string) => {
     setSelectedAnswers({
       ...selectedAnswers,
@@ -148,11 +140,9 @@ const TakeQuiz = () => {
     });
   };
 
-  // Завершение теста
   const handleSubmitQuiz = async () => {
     if (!id || !questions.length) return;
     
-    // Проверяем, что пользователь ответил на все вопросы
     const unansweredQuestions = questions.filter(q => !selectedAnswers[q.id]);
     
     if (unansweredQuestions.length > 0) {
@@ -169,7 +159,6 @@ const TakeQuiz = () => {
     await submitAnswers();
   };
 
-  // Отправка ответов
   const submitAnswers = async () => {
     if (!id || !questions.length) return;
     
@@ -178,7 +167,6 @@ const TakeQuiz = () => {
       
       let correctAnswers = 0;
       
-      // Проверяем ответы и сохраняем результаты
       for (const question of questions) {
         const selectedAnswerId = selectedAnswers[question.id];
         const correctAnswer = question.answers.find(a => a.is_correct);
@@ -188,7 +176,6 @@ const TakeQuiz = () => {
           correctAnswers++;
         }
         
-        // Если пользователь авторизован, сохраняем ответы
         if (user && attemptId) {
           await supabase
             .from('question_responses')
@@ -201,7 +188,6 @@ const TakeQuiz = () => {
         }
       }
       
-      // Обновляем результат попытки
       if (user && attemptId) {
         await supabase
           .from('quiz_attempts')
@@ -212,7 +198,6 @@ const TakeQuiz = () => {
           .eq('id', attemptId);
       }
       
-      // Устанавливаем результат
       setScore({
         correct: correctAnswers,
         total: questions.length
@@ -291,7 +276,7 @@ const TakeQuiz = () => {
                   <div className="space-y-6">
                     <div>
                       <h3 className="text-lg font-semibold mb-4">
-                        {currentQuestion.question_text}
+                        {currentQuestion.text}
                       </h3>
                       
                       <div className="space-y-3">

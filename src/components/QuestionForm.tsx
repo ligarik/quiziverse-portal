@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -40,7 +39,6 @@ const QuestionForm = ({ quizId, onQuestionAdded, onCancel }: QuestionFormProps) 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
-      // Check if file size is less than 5MB
       if (file.size > 5 * 1024 * 1024) {
         toast({
           title: 'Файл слишком большой',
@@ -67,14 +65,12 @@ const QuestionForm = ({ quizId, onQuestionAdded, onCancel }: QuestionFormProps) 
 
   const toggleCorrectAnswer = (index: number) => {
     if (questionType === QuestionType.SINGLE_CHOICE || questionType === QuestionType.TRUE_FALSE) {
-      // For single choice, only one answer can be correct
       const newAnswers = answers.map((a, i) => ({
         ...a,
         isCorrect: i === index
       }));
       setAnswers(newAnswers);
     } else {
-      // For multiple choice, toggle the current answer
       const newAnswers = [...answers];
       newAnswers[index].isCorrect = !newAnswers[index].isCorrect;
       setAnswers(newAnswers);
@@ -84,7 +80,6 @@ const QuestionForm = ({ quizId, onQuestionAdded, onCancel }: QuestionFormProps) 
   const handleTypeChange = (value: QuestionType) => {
     setQuestionType(value);
     
-    // Reset answers based on question type
     if (value === QuestionType.TRUE_FALSE) {
       setAnswers([
         { text: 'Верно', isCorrect: true },
@@ -117,7 +112,6 @@ const QuestionForm = ({ quizId, onQuestionAdded, onCancel }: QuestionFormProps) 
       const newAnswers = [...answers];
       newAnswers.splice(index, 1);
       
-      // Ensure at least one answer is marked as correct
       if (!newAnswers.some(a => a.isCorrect)) {
         newAnswers[0].isCorrect = true;
       }
@@ -168,7 +162,6 @@ const QuestionForm = ({ quizId, onQuestionAdded, onCancel }: QuestionFormProps) 
     try {
       setIsLoading(true);
       
-      // Upload image if provided
       let imageUrl = null;
       if (imageFile) {
         const fileExt = imageFile.name.split('.').pop();
@@ -179,15 +172,11 @@ const QuestionForm = ({ quizId, onQuestionAdded, onCancel }: QuestionFormProps) 
           .from('quiz-assets')
           .upload(filePath, imageFile, {
             cacheControl: '3600',
-            upsert: false,
-            onUploadProgress: (progress) => {
-              setUploadProgress(Math.round((progress.loaded / progress.total) * 100));
-            }
+            upsert: false
           });
           
         if (uploadError) throw uploadError;
         
-        // Get public URL
         const { data: publicUrl } = supabase.storage
           .from('quiz-assets')
           .getPublicUrl(filePath);
@@ -195,7 +184,6 @@ const QuestionForm = ({ quizId, onQuestionAdded, onCancel }: QuestionFormProps) 
         imageUrl = publicUrl.publicUrl;
       }
       
-      // Create question
       const { data: questionData, error: questionError } = await supabase
         .from('questions')
         .insert({
@@ -209,7 +197,6 @@ const QuestionForm = ({ quizId, onQuestionAdded, onCancel }: QuestionFormProps) 
       
       if (questionError) throw questionError;
       
-      // Create answers
       const answersToInsert = validAnswers.map(answer => ({
         question_id: questionData.id,
         answer_text: answer.text,
@@ -254,7 +241,6 @@ const QuestionForm = ({ quizId, onQuestionAdded, onCancel }: QuestionFormProps) 
 
   return (
     <div className="space-y-6">
-      {/* Question Type Selection */}
       <div className="space-y-2">
         <Label>Тип вопроса</Label>
         <RadioGroup 
@@ -277,7 +263,6 @@ const QuestionForm = ({ quizId, onQuestionAdded, onCancel }: QuestionFormProps) 
         </RadioGroup>
       </div>
       
-      {/* Question Text */}
       <div className="space-y-2">
         <Label htmlFor="questionText">Текст вопроса</Label>
         <Textarea
@@ -289,7 +274,6 @@ const QuestionForm = ({ quizId, onQuestionAdded, onCancel }: QuestionFormProps) 
         />
       </div>
       
-      {/* Image Upload */}
       <div className="space-y-2">
         <Label htmlFor="questionImage">Изображение (опционально)</Label>
         <div className="flex items-center space-x-2">
@@ -339,7 +323,6 @@ const QuestionForm = ({ quizId, onQuestionAdded, onCancel }: QuestionFormProps) 
         )}
       </div>
       
-      {/* Answers */}
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <Label>Варианты ответов</Label>
@@ -399,7 +382,6 @@ const QuestionForm = ({ quizId, onQuestionAdded, onCancel }: QuestionFormProps) 
         </div>
       </div>
       
-      {/* Submit Buttons */}
       <div className="flex justify-end space-x-2">
         <Button 
           variant="outline" 
