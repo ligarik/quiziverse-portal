@@ -3,6 +3,8 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { 
   Card, 
   CardContent, 
@@ -28,6 +30,7 @@ const TakeQuiz = () => {
   const [questions, setQuestions] = useState<QuestionWithAnswers[]>([]);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [selectedAnswers, setSelectedAnswers] = useState<Record<string, string>>({});
+  const [textAnswers, setTextAnswers] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [attemptId, setAttemptId] = useState<string | null>(null);
@@ -110,6 +113,16 @@ const TakeQuiz = () => {
                 created_at: question.created_at
               });
             });
+          } else if (questionType === QuestionType.TEXT_INPUT && question.correct_answers) {
+            // For text input questions, create a single correct answer
+            const correctAnswer = (question.correct_answers as any[])[0] || "";
+            answers.push({
+              id: "0",
+              question_id: question.id,
+              answer_text: correctAnswer,
+              is_correct: true,
+              created_at: question.created_at
+            });
           }
           
           questionsWithAnswers.push({
@@ -136,7 +149,7 @@ const TakeQuiz = () => {
               quiz_id: id,
               user_id: user.id,
               score: 0,
-              max_score: questionsWithAnswers.length
+              max_score: questionsWithAnswers.reduce((total, q) => total + (q.points || 1), 0)
             })
             .select('id')
             .single();
@@ -180,10 +193,24 @@ const TakeQuiz = () => {
     });
   };
 
+  const handleTextAnswer = (questionId: string, text: string) => {
+    setTextAnswers({
+      ...textAnswers,
+      [questionId]: text
+    });
+  };
+
   const handleSubmitQuiz = async () => {
     if (!id || !questions.length) return;
     
-    const unansweredQuestions = questions.filter(q => !selectedAnswers[q.id]);
+    // Check for unanswered questions
+    const unansweredQuestions = questions.filter(q => {
+      if (q.question_type === QuestionType.TEXT_INPUT) {
+        return !textAnswers[q.id];
+      } else {
+        return !selectedAnswers[q.id];
+      }
+    });
     
     if (unansweredQuestions.length > 0) {
       toast({
@@ -206,34 +233,51 @@ const TakeQuiz = () => {
       setIsSubmitting(true);
       
       let correctAnswers = 0;
+      let totalPoints = 0;
       
       for (const question of questions) {
-        const selectedAnswerId = selectedAnswers[question.id];
-        const correctAnswer = question.answers.find(a => a.is_correct);
-        const isCorrect = selectedAnswerId && correctAnswer?.id === selectedAnswerId;
+        const isTextQuestion = question.question_type === QuestionType.TEXT_INPUT;
+        const userAnswer = isTextQuestion ? textAnswers[question.id] : selectedAnswers[question.id];
         
-        if (isCorrect) {
+        let isCorrect = false;
+        
+        if (isTextQuestion) {
+          // For text questions, we'll mark them for manual grading initially
+          // and set is_correct to null (pending)
+          isCorrect = false; // Will be manually graded later
+        } else {
+          // For choice questions, check if the selected answer is correct
+          const correctAnswer = question.answers.find(a => a.is_correct);
+          isCorrect = Boolean(userAnswer && correctAnswer?.id === userAnswer);
+        }
+        
+        if (isCorrect && !isTextQuestion) {
           correctAnswers++;
+          totalPoints += question.points || 1;
         }
         
         if (user && attemptId) {
           await supabase
-            .from('answers')  // Use answers table instead of question_responses
+            .from('answers')  // Using answers table instead of question_responses
             .insert({
               attempt_id: attemptId,
               question_id: question.id,
-              user_answer: selectedAnswerId || null,
-              is_correct: isCorrect
+              user_answer: isTextQuestion ? userAnswer : selectedAnswers[question.id],
+              is_correct: isTextQuestion ? null : isCorrect // null for text questions pending review
             });
         }
       }
       
       if (user && attemptId) {
+        // Set the score but mark as not graded for quizzes with text questions
+        const hasTextQuestions = questions.some(q => q.question_type === QuestionType.TEXT_INPUT);
+        
         await supabase
           .from('quiz_attempts')
           .update({
             score: correctAnswers,
-            completed_at: new Date().toISOString()
+            completed_at: new Date().toISOString(),
+            is_graded: !hasTextQuestions // Only mark as graded if there are no text questions
           })
           .eq('id', attemptId);
       }
@@ -330,16 +374,29 @@ const TakeQuiz = () => {
                       )}
                       
                       <div className="space-y-3">
-                        {currentQuestion.answers.map(answer => (
-                          <Button
-                            key={answer.id}
-                            variant={selectedAnswers[currentQuestion.id] === answer.id ? "default" : "outline"}
-                            className="w-full justify-start text-left h-auto py-4 px-6"
-                            onClick={() => handleSelectAnswer(currentQuestion.id, answer.id)}
-                          >
-                            {answer.answer_text}
-                          </Button>
-                        ))}
+                        {currentQuestion.question_type === QuestionType.TEXT_INPUT ? (
+                          // Text input question type
+                          <div className="space-y-2">
+                            <Textarea
+                              placeholder="Введите ваш ответ"
+                              value={textAnswers[currentQuestion.id] || ''}
+                              onChange={(e) => handleTextAnswer(currentQuestion.id, e.target.value)}
+                              className="min-h-[120px]"
+                            />
+                          </div>
+                        ) : (
+                          // Multiple choice question types
+                          currentQuestion.answers.map(answer => (
+                            <Button
+                              key={answer.id}
+                              variant={selectedAnswers[currentQuestion.id] === answer.id ? "default" : "outline"}
+                              className="w-full justify-start text-left h-auto py-4 px-6"
+                              onClick={() => handleSelectAnswer(currentQuestion.id, answer.id)}
+                            >
+                              {answer.answer_text}
+                            </Button>
+                          ))
+                        )}
                       </div>
                     </div>
                   </div>
@@ -359,7 +416,11 @@ const TakeQuiz = () => {
                 {currentQuestionIndex < questions.length - 1 ? (
                   <Button
                     onClick={handleNextQuestion}
-                    disabled={!selectedAnswers[currentQuestion?.id]}
+                    disabled={
+                      (currentQuestion?.question_type === QuestionType.TEXT_INPUT 
+                        ? !textAnswers[currentQuestion?.id] 
+                        : !selectedAnswers[currentQuestion?.id])
+                    }
                   >
                     Далее
                     <ArrowRight className="ml-2 h-4 w-4" />
@@ -389,26 +450,33 @@ const TakeQuiz = () => {
                 </div>
                 <CardTitle className="text-center text-2xl">Тест завершен</CardTitle>
                 <CardDescription className="text-center text-lg">
-                  Вы ответили правильно на {score.correct} из {score.total} вопросов
+                  {questions.some(q => q.question_type === QuestionType.TEXT_INPUT) 
+                    ? "Ваш результат будет доступен после проверки ответов на текстовые вопросы."
+                    : `Вы ответили правильно на ${score.correct} из ${score.total} вопросов`
+                  }
                 </CardDescription>
               </CardHeader>
               
               <CardContent className="pt-0 pb-6">
-                <div className="w-full bg-muted rounded-full h-4 mt-4">
-                  <div 
-                    className={`h-4 rounded-full transition-all duration-1000 ${
-                      score.correct === score.total ? 'bg-green-600' :
-                      score.correct / score.total > 0.7 ? 'bg-green-500' :
-                      score.correct / score.total > 0.4 ? 'bg-yellow-500' :
-                      'bg-red-500'
-                    }`}
-                    style={{ width: `${(score.correct / score.total) * 100}%` }}
-                  />
-                </div>
-                
-                <p className="text-center mt-6 text-lg">
-                  Ваш результат: {Math.round((score.correct / score.total) * 100)}%
-                </p>
+                {!questions.some(q => q.question_type === QuestionType.TEXT_INPUT) && (
+                  <>
+                    <div className="w-full bg-muted rounded-full h-4 mt-4">
+                      <div 
+                        className={`h-4 rounded-full transition-all duration-1000 ${
+                          score.correct === score.total ? 'bg-green-600' :
+                          score.correct / score.total > 0.7 ? 'bg-green-500' :
+                          score.correct / score.total > 0.4 ? 'bg-yellow-500' :
+                          'bg-red-500'
+                        }`}
+                        style={{ width: `${(score.correct / score.total) * 100}%` }}
+                      />
+                    </div>
+                    
+                    <p className="text-center mt-6 text-lg">
+                      Ваш результат: {Math.round((score.correct / score.total) * 100)}%
+                    </p>
+                  </>
+                )}
               </CardContent>
               
               <CardFooter className="flex flex-col sm:flex-row justify-center gap-4">
