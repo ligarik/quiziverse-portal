@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Trash2, ChevronDown, ChevronUp, Image as ImageIcon } from 'lucide-react';
@@ -8,7 +7,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { Question, Answer, QuestionType } from '@/lib/supabase';
+import { Question, Answer, QuestionType } from '@/integrations/supabase/client';
 import { Badge } from '@/components/ui/badge';
 
 interface QuestionItemProps {
@@ -97,7 +96,7 @@ const QuestionItem = ({ question, index, onDelete }: QuestionItemProps) => {
           {question.question_type === QuestionType.MATCHING ? (
             <div className="space-y-1">
               <div className="grid grid-cols-2 gap-4 mb-2">
-                <div className="font-medium text-sm">Элемент</div>
+                <div className="font-medium text-sm">Эле��ент</div>
                 <div className="font-medium text-sm">Соответствие</div>
               </div>
               {question.answers.map((answer, aIndex) => (

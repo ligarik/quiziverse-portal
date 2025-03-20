@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -20,8 +19,7 @@ import {
 } from '@/components/ui/select';
 import { Clock, Shuffle, MessageCircle, Scale } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
-import { Quiz } from '@/lib/supabase';
-import { supabase } from '@/lib/supabase';
+import { Quiz, supabase } from '@/integrations/supabase/client';
 
 interface QuizSettingsProps {
   quiz: Quiz;

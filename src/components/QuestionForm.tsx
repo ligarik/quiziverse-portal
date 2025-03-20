@@ -6,8 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Check, Loader2, Image as ImageIcon, X, Upload } from 'lucide-react';
-import { QuestionType } from '@/lib/supabase';
-import { supabase } from '@/lib/supabase';
+import { QuestionType, supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/components/ui/use-toast';
 import { 
   Select,
@@ -269,7 +268,7 @@ const QuestionForm = ({ quizId, onQuestionAdded, onCancel }: QuestionFormProps) 
         .from('questions')
         .insert({
           quiz_id: quizId,
-          text: questionText, // Using 'text' to match the database column
+          content: questionText, // Use content instead of text for db
           question_type: questionType,
           points: points,
           image_url: imageUrl
@@ -320,7 +319,8 @@ const QuestionForm = ({ quizId, onQuestionAdded, onCancel }: QuestionFormProps) 
       const newQuestion = {
         id: questionData.id,
         quiz_id: quizId,
-        text: questionText,
+        content: questionText,
+        text: questionText, // Add text property for UI
         question_type: questionType,
         created_at: new Date().toISOString(),
         points: points,

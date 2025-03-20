@@ -100,6 +100,7 @@ export type Database = {
           created_at: string
           grading_method: Database["public"]["Enums"]["grading_method"]
           id: string
+          image_url: string | null
           options: Json | null
           points: number
           position: number
@@ -113,6 +114,7 @@ export type Database = {
           created_at?: string
           grading_method?: Database["public"]["Enums"]["grading_method"]
           id?: string
+          image_url?: string | null
           options?: Json | null
           points?: number
           position: number
@@ -126,6 +128,7 @@ export type Database = {
           created_at?: string
           grading_method?: Database["public"]["Enums"]["grading_method"]
           id?: string
+          image_url?: string | null
           options?: Json | null
           points?: number
           position?: number
@@ -221,6 +224,10 @@ export type Database = {
           description: string | null
           id: string
           is_public: boolean
+          is_published: boolean | null
+          randomize_questions: boolean | null
+          show_feedback: boolean | null
+          time_limit: number | null
           title: string
           updated_at: string
         }
@@ -230,6 +237,10 @@ export type Database = {
           description?: string | null
           id?: string
           is_public?: boolean
+          is_published?: boolean | null
+          randomize_questions?: boolean | null
+          show_feedback?: boolean | null
+          time_limit?: number | null
           title: string
           updated_at?: string
         }
@@ -239,6 +250,10 @@ export type Database = {
           description?: string | null
           id?: string
           is_public?: boolean
+          is_published?: boolean | null
+          randomize_questions?: boolean | null
+          show_feedback?: boolean | null
+          time_limit?: number | null
           title?: string
           updated_at?: string
         }

@@ -35,8 +35,7 @@ import {
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import { useToast } from '@/components/ui/use-toast';
-import { supabase } from '@/lib/supabase';
-import { Quiz, Question, Answer, QuestionType } from '@/lib/supabase';
+import { supabase, Quiz, Question, Answer, QuestionType } from '@/integrations/supabase/client';
 import QuestionForm from '@/components/QuestionForm';
 import QuestionItem from '@/components/QuestionItem';
 import QuizSettings from '@/components/QuizSettings';
@@ -98,7 +97,8 @@ const EditQuiz = () => {
           is_published: quizData.is_published || false,
           time_limit: quizData.time_limit,
           randomize_questions: quizData.randomize_questions || false,
-          show_feedback: quizData.show_feedback || false
+          show_feedback: quizData.show_feedback || false,
+          description: quizData.description || ''
         };
         
         const { data: questionsData, error: questionsError } = await supabase
@@ -111,6 +111,12 @@ const EditQuiz = () => {
         const questionsWithAnswers: QuestionWithAnswers[] = [];
         
         for (const question of questionsData || []) {
+          // Map the content field to text for UI compatibility
+          const questionWithText = {
+            ...question,
+            text: question.content // Map DB content field to text for UI
+          };
+          
           const { data: answersData, error: answersError } = await supabase
             .from('answers')
             .select('*')
@@ -119,7 +125,7 @@ const EditQuiz = () => {
           if (answersError) throw answersError;
           
           questionsWithAnswers.push({
-            ...question,
+            ...questionWithText,
             answers: answersData || []
           });
         }
@@ -193,7 +199,12 @@ const EditQuiz = () => {
   };
 
   const handleQuestionAdded = (newQuestion: QuestionWithAnswers) => {
-    setQuestions([...questions, newQuestion]);
+    // Make sure to map content to text for UI consistency
+    const questionWithText = {
+      ...newQuestion,
+      text: newQuestion.content
+    };
+    setQuestions([...questions, questionWithText]);
     document.getElementById('closeAddQuestionDialog')?.click();
   };
 
