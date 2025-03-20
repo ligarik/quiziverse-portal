@@ -18,7 +18,7 @@ export type User = {
   created_at?: string;
 };
 
-// Update the QuestionType enum to match the database schema
+// Update the QuestionType enum to match the database schema exactly
 export enum QuestionType {
   SINGLE_CHOICE = 'single_choice',
   MULTIPLE_CHOICE = 'multiple_choice',

@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
@@ -15,7 +14,7 @@ import { ArrowLeft, Loader2 } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import GradeTextAnswers from '@/components/GradeTextAnswers';
-import { supabase, Quiz, Question } from '@/integrations/supabase/client';
+import { supabase, Quiz, Question, QuestionType } from '@/integrations/supabase/client';
 
 interface AttemptWithUser {
   id: string;
@@ -91,17 +90,45 @@ const QuizStats = () => {
         if (questionsError) throw questionsError;
         
         // Transform DB questions to our Question interface
-        const transformedQuestions = questionsData.map(q => ({
-          id: q.id,
-          quiz_id: q.quiz_id,
-          text: q.content, // Mapping content to text for UI
-          content: q.content,
-          created_at: q.created_at,
-          question_type: q.question_type,
-          points: q.points,
-          image_url: q.image_url,
-          position: q.position
-        }));
+        const transformedQuestions: Question[] = questionsData.map(q => {
+          // Convert database type to enum type
+          let questionType: QuestionType;
+          
+          switch (q.question_type) {
+            case 'single_choice':
+              questionType = QuestionType.SINGLE_CHOICE;
+              break;
+            case 'multiple_choice':
+              questionType = QuestionType.MULTIPLE_CHOICE;
+              break;
+            case 'text':
+              questionType = QuestionType.TEXT_INPUT;
+              break;
+            case 'true_false':
+              questionType = QuestionType.TRUE_FALSE;
+              break;
+            case 'matching':
+              questionType = QuestionType.MATCHING;
+              break;
+            case 'number':
+              questionType = QuestionType.NUMBER_INPUT;
+              break;
+            default:
+              questionType = QuestionType.SINGLE_CHOICE;
+          }
+          
+          return {
+            id: q.id,
+            quiz_id: q.quiz_id,
+            text: q.content, // Mapping content to text for UI
+            content: q.content,
+            created_at: q.created_at,
+            question_type: questionType,
+            points: q.points,
+            image_url: q.image_url,
+            position: q.position
+          };
+        });
         
         setQuestions(transformedQuestions);
       } catch (error) {
