@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
@@ -29,6 +30,7 @@ import {
   Plus, 
   Check, 
   Save,
+  Settings,
 } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
@@ -37,6 +39,13 @@ import { supabase } from '@/lib/supabase';
 import { Quiz, Question, Answer, QuestionType } from '@/lib/supabase';
 import QuestionForm from '@/components/QuestionForm';
 import QuestionItem from '@/components/QuestionItem';
+import QuizSettings from '@/components/QuizSettings';
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
 
 interface QuestionWithAnswers extends Question {
   answers: Answer[];
@@ -52,6 +61,7 @@ const EditQuiz = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isAddingQuestion, setIsAddingQuestion] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
+  const [activeTab, setActiveTab] = useState("editor");
   
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -83,9 +93,12 @@ const EditQuiz = () => {
           return;
         }
         
-        const quizWithPublishState = {
+        const quizWithDefaults = {
           ...quizData,
-          is_published: quizData.is_published || false
+          is_published: quizData.is_published || false,
+          time_limit: quizData.time_limit,
+          randomize_questions: quizData.randomize_questions || false,
+          show_feedback: quizData.show_feedback || false
         };
         
         const { data: questionsData, error: questionsError } = await supabase
@@ -111,9 +124,9 @@ const EditQuiz = () => {
           });
         }
         
-        setQuiz(quizWithPublishState);
-        setTitle(quizWithPublishState.title);
-        setDescription(quizWithPublishState.description || '');
+        setQuiz(quizWithDefaults);
+        setTitle(quizWithDefaults.title);
+        setDescription(quizWithDefaults.description || '');
         setQuestions(questionsWithAnswers);
       } catch (error) {
         console.error('Ошибка при загрузке теста:', error);
@@ -269,6 +282,10 @@ const EditQuiz = () => {
     }
   };
 
+  const handleSettingsUpdated = (updatedQuiz: Quiz) => {
+    setQuiz(updatedQuiz);
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex flex-col">
@@ -312,135 +329,148 @@ const EditQuiz = () => {
             </div>
           </div>
           
-          <Card className="mb-8">
-            <CardHeader className="flex flex-row items-start justify-between">
-              <div>
-                <CardTitle>Основная информация</CardTitle>
-                <CardDescription>
-                  Информация о вашем тесте
-                </CardDescription>
-              </div>
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={handleSaveQuiz}
-                disabled={isSaving}
-              >
-                {isSaving ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : (
-                  <Save className="mr-2 h-4 w-4" />
-                )}
-                Сохранить
-              </Button>
-            </CardHeader>
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-8">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="editor">Редактор</TabsTrigger>
+              <TabsTrigger value="settings">Настройки</TabsTrigger>
+            </TabsList>
             
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="title">Название теста</Label>
-                <Input
-                  id="title"
-                  placeholder="Введите название теста"
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  required
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="description">Описание</Label>
-                <Textarea
-                  id="description"
-                  placeholder="Введите описание теста (опционально)"
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  className="min-h-[100px]"
-                />
-              </div>
-            </CardContent>
-          </Card>
-          
-          <div className="mb-6 flex items-center justify-between">
-            <h2 className="text-2xl font-bold">Вопросы</h2>
-            
-            <Dialog>
-              <DialogTrigger asChild>
-                <Button>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Добавить вопрос
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-                <DialogHeader>
-                  <DialogTitle>Новый вопрос</DialogTitle>
-                  <DialogDescription>
-                    Добавьте текст вопроса, выберите тип и варианты ответов.
-                  </DialogDescription>
-                </DialogHeader>
-                
-                <div className="py-4">
-                  <QuestionForm 
-                    quizId={id || ''} 
-                    onQuestionAdded={handleQuestionAdded}
-                    onCancel={() => document.getElementById('closeAddQuestionDialog')?.click()}
-                  />
-                </div>
-                
-                <DialogFooter className="hidden">
-                  <DialogClose asChild>
-                    <Button id="closeAddQuestionDialog">Закрыть</Button>
-                  </DialogClose>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-          </div>
-          
-          {questions.length === 0 ? (
-            <Card className="p-8 text-center">
-              <p className="text-muted-foreground mb-4">У этого теста пока нет вопросов</p>
-              <Dialog>
-                <DialogTrigger asChild>
-                  <Button>
-                    <Plus className="mr-2 h-4 w-4" />
-                    Добавить первый вопрос
+            <TabsContent value="editor" className="space-y-8">
+              <Card>
+                <CardHeader className="flex flex-row items-start justify-between">
+                  <div>
+                    <CardTitle>Основная информация</CardTitle>
+                    <CardDescription>
+                      Информация о вашем тесте
+                    </CardDescription>
+                  </div>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={handleSaveQuiz}
+                    disabled={isSaving}
+                  >
+                    {isSaving ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <Save className="mr-2 h-4 w-4" />
+                    )}
+                    Сохранить
                   </Button>
-                </DialogTrigger>
-                <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-                  <DialogHeader>
-                    <DialogTitle>Новый вопрос</DialogTitle>
-                    <DialogDescription>
-                      Добавьте текст вопроса, выберите тип и варианты ответов.
-                    </DialogDescription>
-                  </DialogHeader>
-                  
-                  <div className="py-4">
-                    <QuestionForm 
-                      quizId={id || ''} 
-                      onQuestionAdded={handleQuestionAdded}
-                      onCancel={() => document.getElementById('closeAddQuestionDialog')?.click()}
+                </CardHeader>
+                
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="title">Название теста</Label>
+                    <Input
+                      id="title"
+                      placeholder="Введите название теста"
+                      value={title}
+                      onChange={(e) => setTitle(e.target.value)}
+                      required
                     />
                   </div>
                   
-                  <DialogFooter className="hidden">
-                    <DialogClose asChild>
-                      <Button id="closeAddQuestionDialog">Закрыть</Button>
-                    </DialogClose>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
-            </Card>
-          ) : (
-            <div className="space-y-4">
-              {questions.map((question, index) => (
-                <QuestionItem 
-                  key={question.id} 
-                  question={question} 
-                  index={index} 
-                  onDelete={handleDeleteQuestion} 
-                />
-              ))}
-            </div>
-          )}
+                  <div className="space-y-2">
+                    <Label htmlFor="description">Описание</Label>
+                    <Textarea
+                      id="description"
+                      placeholder="Введите описание теста (опционально)"
+                      value={description}
+                      onChange={(e) => setDescription(e.target.value)}
+                      className="min-h-[100px]"
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+              
+              <div className="mb-6 flex items-center justify-between">
+                <h2 className="text-2xl font-bold">Вопросы</h2>
+                
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <Button>
+                      <Plus className="mr-2 h-4 w-4" />
+                      Добавить вопрос
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+                    <DialogHeader>
+                      <DialogTitle>Новый вопрос</DialogTitle>
+                      <DialogDescription>
+                        Добавьте текст вопроса, выберите тип и варианты ответов.
+                      </DialogDescription>
+                    </DialogHeader>
+                    
+                    <div className="py-4">
+                      <QuestionForm 
+                        quizId={id || ''} 
+                        onQuestionAdded={handleQuestionAdded}
+                        onCancel={() => document.getElementById('closeAddQuestionDialog')?.click()}
+                      />
+                    </div>
+                    
+                    <DialogFooter className="hidden">
+                      <DialogClose asChild>
+                        <Button id="closeAddQuestionDialog">Закрыть</Button>
+                      </DialogClose>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+              </div>
+              
+              {questions.length === 0 ? (
+                <Card className="p-8 text-center">
+                  <p className="text-muted-foreground mb-4">У этого теста пока нет вопросов</p>
+                  <Dialog>
+                    <DialogTrigger asChild>
+                      <Button>
+                        <Plus className="mr-2 h-4 w-4" />
+                        Добавить первый вопрос
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+                      <DialogHeader>
+                        <DialogTitle>Новый вопрос</DialogTitle>
+                        <DialogDescription>
+                          Добавьте текст вопроса, выберите тип и варианты ответов.
+                        </DialogDescription>
+                      </DialogHeader>
+                      
+                      <div className="py-4">
+                        <QuestionForm 
+                          quizId={id || ''} 
+                          onQuestionAdded={handleQuestionAdded}
+                          onCancel={() => document.getElementById('closeAddQuestionDialog')?.click()}
+                        />
+                      </div>
+                      
+                      <DialogFooter className="hidden">
+                        <DialogClose asChild>
+                          <Button id="closeAddQuestionDialog">Закрыть</Button>
+                        </DialogClose>
+                      </DialogFooter>
+                    </DialogContent>
+                  </Dialog>
+                </Card>
+              ) : (
+                <div className="space-y-4">
+                  {questions.map((question, index) => (
+                    <QuestionItem 
+                      key={question.id} 
+                      question={question} 
+                      index={index} 
+                      onDelete={handleDeleteQuestion} 
+                    />
+                  ))}
+                </div>
+              )}
+            </TabsContent>
+            
+            <TabsContent value="settings">
+              {quiz && <QuizSettings quiz={quiz} onSettingsUpdated={handleSettingsUpdated} />}
+            </TabsContent>
+          </Tabs>
         </div>
       </main>
       

@@ -18,23 +18,31 @@ export type Quiz = {
   title: string;
   description: string;
   created_at: string;
-  created_by: string; // Using created_by as per database schema
+  created_by: string; 
   is_public?: boolean;
-  is_published?: boolean; // Add the is_published property
+  is_published?: boolean;
+  time_limit?: number; // Added: time limit in minutes
+  randomize_questions?: boolean; // Added: option to randomize questions
+  show_feedback?: boolean; // Added: whether to show feedback after completion
 };
 
 export enum QuestionType {
   SINGLE_CHOICE = 'single_choice',
   MULTIPLE_CHOICE = 'multiple_choice',
-  TRUE_FALSE = 'true_false'
+  TRUE_FALSE = 'true_false',
+  NUMBER_INPUT = 'number_input', // Added: for number input questions
+  TEXT_INPUT = 'text_input', // Added: for text input questions
+  MATCHING = 'matching' // Added: for matching questions
 }
 
 export type Question = {
   id: string;
   quiz_id: string;
-  question_text: string; // Изменено с text на question_text, чтобы соответствовать названию колонки в базе данных
+  text: string; // Kept 'text' for TypeScript types, will handle DB column mismatch in component
   created_at: string;
   question_type: QuestionType;
+  points?: number; // Added: points value for the question
+  image_url?: string; // Added: for question images
 };
 
 export type Answer = {
@@ -43,6 +51,7 @@ export type Answer = {
   answer_text: string;
   is_correct: boolean;
   created_at: string;
+  matching_text?: string; // Added: for matching question types
 };
 
 export type QuizAttempt = {
@@ -62,4 +71,5 @@ export type QuestionResponse = {
   answer_id: string | null;
   is_correct: boolean;
   created_at: string;
+  user_answer_text?: string; // Added: for text/number input responses
 };

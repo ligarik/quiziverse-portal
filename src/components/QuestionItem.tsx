@@ -1,7 +1,7 @@
 
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Trash2, ChevronDown, ChevronUp } from 'lucide-react';
+import { Trash2, ChevronDown, ChevronUp, Image as ImageIcon } from 'lucide-react';
 import { 
   Card,
   CardContent,
@@ -9,6 +9,7 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Question, Answer, QuestionType } from '@/lib/supabase';
+import { Badge } from '@/components/ui/badge';
 
 interface QuestionItemProps {
   question: Question & { answers: Answer[] };
@@ -27,6 +28,12 @@ const QuestionItem = ({ question, index, onDelete }: QuestionItemProps) => {
         return 'Несколько вариантов ответа';
       case QuestionType.TRUE_FALSE:
         return 'Верно/Неверно';
+      case QuestionType.TEXT_INPUT:
+        return 'Ввод текста';
+      case QuestionType.NUMBER_INPUT:
+        return 'Ввод числа';
+      case QuestionType.MATCHING:
+        return 'Соответствие';
       default:
         return 'Неизвестный тип';
     }
@@ -41,10 +48,13 @@ const QuestionItem = ({ question, index, onDelete }: QuestionItemProps) => {
           </span>
           <Button 
             variant="ghost" 
-            className="p-0 h-auto font-medium text-left"
+            className="p-0 h-auto font-medium text-left flex items-center"
             onClick={() => setExpanded(!expanded)}
           >
-            {question.question_text} {/* Изменено с text на question_text */}
+            {question.text}
+            {question.image_url && (
+              <ImageIcon className="ml-2 h-4 w-4 text-muted-foreground" />
+            )}
             {expanded ? (
               <ChevronUp className="ml-2 h-4 w-4" />
             ) : (
@@ -53,6 +63,11 @@ const QuestionItem = ({ question, index, onDelete }: QuestionItemProps) => {
           </Button>
         </CardTitle>
         <div className="flex items-center gap-2">
+          {question.points && question.points > 1 && (
+            <Badge variant="secondary">
+              {question.points} {question.points > 1 ? 'баллов' : 'балл'}
+            </Badge>
+          )}
           <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded-md">
             {getQuestionTypeLabel(question.question_type)}
           </span>
@@ -69,19 +84,50 @@ const QuestionItem = ({ question, index, onDelete }: QuestionItemProps) => {
       
       {expanded && (
         <CardContent className="py-2">
-          <div className="space-y-1">
-            {question.answers.map((answer, aIndex) => (
-              <div 
-                key={answer.id} 
-                className={`p-2 rounded-md ${answer.is_correct ? 'bg-primary/10 border border-primary/30' : 'bg-muted/50'}`}
-              >
-                <p className={`text-sm ${answer.is_correct ? 'text-primary font-medium' : ''}`}>
-                  {aIndex + 1}. {answer.answer_text} 
-                  {answer.is_correct && ' ✓'}
-                </p>
+          {question.image_url && (
+            <div className="mb-3">
+              <img 
+                src={question.image_url} 
+                alt="Изображение вопроса" 
+                className="max-h-40 rounded-md object-contain"
+              />
+            </div>
+          )}
+          
+          {question.question_type === QuestionType.MATCHING ? (
+            <div className="space-y-1">
+              <div className="grid grid-cols-2 gap-4 mb-2">
+                <div className="font-medium text-sm">Элемент</div>
+                <div className="font-medium text-sm">Соответствие</div>
               </div>
-            ))}
-          </div>
+              {question.answers.map((answer, aIndex) => (
+                <div key={answer.id} className="grid grid-cols-2 gap-4 p-2 rounded-md bg-muted/50">
+                  <p className="text-sm">{aIndex + 1}. {answer.answer_text}</p>
+                  <p className="text-sm">{answer.matching_text}</p>
+                </div>
+              ))}
+            </div>
+          ) : question.question_type === QuestionType.TEXT_INPUT || question.question_type === QuestionType.NUMBER_INPUT ? (
+            <div className="p-2 rounded-md bg-primary/10 border border-primary/30">
+              <p className="text-sm text-primary font-medium">
+                Правильный ответ: {question.answers[0]?.answer_text}
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-1">
+              {question.answers.map((answer, aIndex) => (
+                <div 
+                  key={answer.id} 
+                  className={`p-2 rounded-md ${answer.is_correct ? 'bg-primary/10 border border-primary/30' : 'bg-muted/50'}`}
+                >
+                  <p className={`text-sm ${answer.is_correct ? 'text-primary font-medium' : ''}`}>
+                    {aIndex + 1}. {answer.answer_text} 
+                    {answer.is_correct && ' ✓'}
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
         </CardContent>
       )}
     </Card>
