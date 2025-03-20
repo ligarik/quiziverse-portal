@@ -268,7 +268,13 @@ export type Database = {
     }
     Enums: {
       grading_method: "automatic" | "manual"
-      question_type: "single_choice" | "multiple_choice" | "text" | "true_false"
+      question_type:
+        | "single_choice"
+        | "multiple_choice"
+        | "text"
+        | "true_false"
+        | "number"
+        | "matching"
     }
     CompositeTypes: {
       [_ in never]: never

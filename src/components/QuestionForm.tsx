@@ -1,10 +1,11 @@
+
 import { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Check, Loader2, Image as ImageIcon, X } from 'lucide-react';
+import { Check, Loader2, Image as ImageIcon, X, Plus, Trash } from 'lucide-react';
 import { QuestionType, supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/components/ui/use-toast';
 import { Json } from '@/integrations/supabase/types';
@@ -73,8 +74,13 @@ const QuestionForm = ({ quizId, onQuestionAdded, onCancel }: QuestionFormProps) 
         { text: 'Верно', isCorrect: true },
         { text: 'Неверно', isCorrect: false }
       ]);
-    } else if (value === QuestionType.TEXT_INPUT) {
-      setAnswers([{ text: 'Ответ', isCorrect: true }]);
+    } else if (value === QuestionType.TEXT_INPUT || value === QuestionType.NUMBER_INPUT) {
+      setAnswers([{ text: value === QuestionType.NUMBER_INPUT ? '0' : 'Ответ', isCorrect: true }]);
+    } else if (value === QuestionType.MATCHING) {
+      setAnswers([
+        { text: 'Элемент 1', isCorrect: true, matchingText: 'Соответствие 1' },
+        { text: 'Элемент 2', isCorrect: true, matchingText: 'Соответствие 2' }
+      ]);
     } else if (answers.length < 2) {
       setAnswers([
         { text: '', isCorrect: true },
@@ -87,7 +93,11 @@ const QuestionForm = ({ quizId, onQuestionAdded, onCancel }: QuestionFormProps) 
 
   const addAnswer = () => {
     if (answers.length < 8) {
-      setAnswers([...answers, { text: '', isCorrect: false }]);
+      if (questionType === QuestionType.MATCHING) {
+        setAnswers([...answers, { text: '', isCorrect: true, matchingText: '' }]);
+      } else {
+        setAnswers([...answers, { text: '', isCorrect: false }]);
+      }
     } else {
       toast({
         title: 'Максимальное количество ответов',
@@ -107,6 +117,10 @@ const QuestionForm = ({ quizId, onQuestionAdded, onCancel }: QuestionFormProps) 
         newAnswers[0].isCorrect = true;
       }
       
+      setAnswers(newAnswers);
+    } else if (questionType === QuestionType.MATCHING && answers.length > 2) {
+      const newAnswers = [...answers];
+      newAnswers.splice(index, 1);
       setAnswers(newAnswers);
     } else {
       toast({
@@ -219,6 +233,26 @@ const QuestionForm = ({ quizId, onQuestionAdded, onCancel }: QuestionFormProps) 
         });
         return;
       }
+    } else if (questionType === QuestionType.NUMBER_INPUT) {
+      if (!answers[0].text.trim() || isNaN(Number(answers[0].text))) {
+        toast({
+          title: 'Ошибка',
+          description: 'Укажите правильный числовой ответ',
+          variant: 'destructive',
+        });
+        return;
+      }
+    } else if (questionType === QuestionType.MATCHING) {
+      const validMatches = answers.filter(a => a.text.trim() !== '' && a.matchingText?.trim() !== '');
+      
+      if (validMatches.length < 2) {
+        toast({
+          title: 'Ошибка',
+          description: 'Добавьте как минимум две пары соответствия',
+          variant: 'destructive',
+        });
+        return;
+      }
     }
     
     try {
@@ -265,14 +299,20 @@ const QuestionForm = ({ quizId, onQuestionAdded, onCancel }: QuestionFormProps) 
         correctAnswers = answers[0].isCorrect ? ["0"] : ["1"];
       } else if (questionType === QuestionType.TEXT_INPUT) {
         correctAnswers = [answers[0].text];
+      } else if (questionType === QuestionType.NUMBER_INPUT) {
+        correctAnswers = [Number(answers[0].text)];
+      } else if (questionType === QuestionType.MATCHING) {
+        options = answers.map((a, index) => ({
+          id: index.toString(),
+          text: a.text,
+          matchingText: a.matchingText
+        }));
+        
+        correctAnswers = answers.map((_, index) => index.toString());
       }
       
       // Convert our enum to the database string value
-      const dbQuestionType = questionType === QuestionType.SINGLE_CHOICE ? 'single_choice' :
-                           questionType === QuestionType.MULTIPLE_CHOICE ? 'multiple_choice' :
-                           questionType === QuestionType.TEXT_INPUT ? 'text' :
-                           questionType === QuestionType.TRUE_FALSE ? 'true_false' :
-                           'single_choice';
+      const dbQuestionType = questionType.toString();
       
       // Insert question
       const { data: questionData, error: questionError } = await supabase
@@ -286,7 +326,7 @@ const QuestionForm = ({ quizId, onQuestionAdded, onCancel }: QuestionFormProps) 
           position: position,
           options: options,
           correct_answers: correctAnswers,
-          grading_method: 'automatic'
+          grading_method: questionType === QuestionType.TEXT_INPUT ? 'manual' : 'automatic'
         })
         .select('id')
         .single();
@@ -353,10 +393,16 @@ const QuestionForm = ({ quizId, onQuestionAdded, onCancel }: QuestionFormProps) 
             <RadioGroupItem value={QuestionType.TEXT_INPUT} id="text_input" />
             <Label htmlFor="text_input">Ввод текста</Label>
           </div>
+          <div className="flex items-center space-x-2">
+            <RadioGroupItem value={QuestionType.NUMBER_INPUT} id="number_input" />
+            <Label htmlFor="number_input">Ввод числа</Label>
+          </div>
+          <div className="flex items-center space-x-2">
+            <RadioGroupItem value={QuestionType.MATCHING} id="matching" />
+            <Label htmlFor="matching">Соответствие</Label>
+          </div>
         </RadioGroup>
       </div>
-      
-      
       
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div className="md:col-span-3 space-y-2">
@@ -427,24 +473,34 @@ const QuestionForm = ({ quizId, onQuestionAdded, onCancel }: QuestionFormProps) 
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <Label>
-            {questionType === QuestionType.TEXT_INPUT ? 'Правильный ответ (текст)' : 'Варианты ответов'}
+            {questionType === QuestionType.TEXT_INPUT 
+              ? 'Правильный ответ (текст)' 
+              : questionType === QuestionType.NUMBER_INPUT 
+                ? 'Правильный ответ (число)' 
+                : questionType === QuestionType.MATCHING 
+                  ? 'Пары соответствия' 
+                  : 'Варианты ответов'}
           </Label>
           {(questionType === QuestionType.SINGLE_CHOICE || 
-            questionType === QuestionType.MULTIPLE_CHOICE) && (
+            questionType === QuestionType.MULTIPLE_CHOICE ||
+            questionType === QuestionType.MATCHING) && (
             <Button 
               type="button" 
               variant="outline" 
               size="sm" 
               onClick={addAnswer}
             >
-              Добавить вариант
+              <Plus className="mr-2 h-4 w-4" />
+              {questionType === QuestionType.MATCHING 
+                ? 'Добавить пару' 
+                : 'Добавить вариант'}
             </Button>
           )}
         </div>
         
         <div className="space-y-3">
           {questionType === QuestionType.TEXT_INPUT ? (
-            // Text/Number input UI
+            // Text input UI
             <div className="flex items-center gap-2">
               <div className="flex-grow">
                 <Input
@@ -455,6 +511,52 @@ const QuestionForm = ({ quizId, onQuestionAdded, onCancel }: QuestionFormProps) 
                 />
               </div>
             </div>
+          ) : questionType === QuestionType.NUMBER_INPUT ? (
+            // Number input UI
+            <div className="flex items-center gap-2">
+              <div className="flex-grow">
+                <Input
+                  placeholder="Введите числовой ответ"
+                  value={answers[0].text}
+                  type="number"
+                  onChange={(e) => handleAnswerChange(0, e.target.value)}
+                />
+              </div>
+            </div>
+          ) : questionType === QuestionType.MATCHING ? (
+            // Matching items UI
+            answers.map((answer, index) => (
+              <div key={index} className="grid grid-cols-1 sm:grid-cols-2 gap-2 p-2 border rounded-md">
+                <div className="flex items-center gap-2">
+                  <div className="flex-grow">
+                    <Input
+                      placeholder={`Элемент ${index + 1}`}
+                      value={answer.text}
+                      onChange={(e) => handleAnswerChange(index, e.target.value)}
+                    />
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="flex-grow">
+                    <Input
+                      placeholder={`Соответствие ${index + 1}`}
+                      value={answer.matchingText || ''}
+                      onChange={(e) => handleMatchingChange(index, e.target.value)}
+                    />
+                  </div>
+                  {answers.length > 2 && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => removeAnswer(index)}
+                    >
+                      <Trash className="h-4 w-4 text-destructive" />
+                    </Button>
+                  )}
+                </div>
+              </div>
+            ))
           ) : (
             // Single/Multiple choice UI
             answers.map((answer, index) => (
@@ -492,7 +594,7 @@ const QuestionForm = ({ quizId, onQuestionAdded, onCancel }: QuestionFormProps) 
                     size="sm"
                     onClick={() => removeAnswer(index)}
                   >
-                    Удалить
+                    <Trash className="h-4 w-4" />
                   </Button>
                 )}
               </div>

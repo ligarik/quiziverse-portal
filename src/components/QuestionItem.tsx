@@ -32,6 +32,8 @@ const QuestionItem = ({ question, index, onDelete }: QuestionItemProps) => {
         return 'Ввод текста';
       case QuestionType.MATCHING:
         return 'Сопоставление';
+      case QuestionType.NUMBER_INPUT:
+        return 'Ввод числа';
       default:
         return 'Неизвестный тип';
     }
@@ -105,7 +107,7 @@ const QuestionItem = ({ question, index, onDelete }: QuestionItemProps) => {
                 </div>
               ))}
             </div>
-          ) : question.question_type === QuestionType.TEXT_INPUT ? (
+          ) : question.question_type === QuestionType.TEXT_INPUT || question.question_type === QuestionType.NUMBER_INPUT ? (
             <div className="p-2 rounded-md bg-primary/10 border border-primary/30">
               <p className="text-sm text-primary font-medium">
                 Правильный ответ: {question.answers[0]?.answer_text}
