@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
@@ -40,7 +41,7 @@ import {
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import { useToast } from '@/components/ui/use-toast';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase, Quiz } from '@/integrations/supabase/client';
 
 const Dashboard = () => {
   const [quizzes, setQuizzes] = useState<Quiz[]>([]);
@@ -66,9 +67,18 @@ const Dashboard = () => {
         
         if (error) throw error;
         
-        const quizzesWithPublishState = (data || []).map(quiz => ({
-          ...quiz,
-          is_published: quiz.is_published || false
+        // Convert database records to Quiz type
+        const quizzesWithPublishState: Quiz[] = (data || []).map(item => ({
+          id: item.id,
+          title: item.title,
+          description: item.description || '',
+          created_at: item.created_at,
+          created_by: item.created_by,
+          is_public: item.is_public,
+          is_published: item.is_published || false,
+          time_limit: item.time_limit,
+          randomize_questions: item.randomize_questions,
+          show_feedback: item.show_feedback
         }));
         
         setQuizzes(quizzesWithPublishState);
@@ -97,6 +107,7 @@ const Dashboard = () => {
     try {
       setIsDeletingId(quizId);
       
+      // Get the questions for this quiz
       const { data: questions, error: questionsError } = await supabase
         .from('questions')
         .select('id')
@@ -104,6 +115,7 @@ const Dashboard = () => {
       
       if (questionsError) throw questionsError;
       
+      // Delete answers for each question
       for (const question of questions || []) {
         await supabase
           .from('answers')
@@ -111,11 +123,13 @@ const Dashboard = () => {
           .eq('question_id', question.id);
       }
       
+      // Delete all questions
       await supabase
         .from('questions')
         .delete()
         .eq('quiz_id', quizId);
       
+      // Get quiz attempts
       const { data: attempts, error: attemptsError } = await supabase
         .from('quiz_attempts')
         .select('id')
@@ -123,18 +137,21 @@ const Dashboard = () => {
       
       if (attemptsError) throw attemptsError;
       
+      // Delete responses for each attempt
       for (const attempt of attempts || []) {
         await supabase
-          .from('question_responses')
+          .from('answers')  // Use answers table instead of question_responses
           .delete()
           .eq('attempt_id', attempt.id);
       }
       
+      // Delete all attempts
       await supabase
         .from('quiz_attempts')
         .delete()
         .eq('quiz_id', quizId);
       
+      // Finally delete the quiz itself
       const { error } = await supabase
         .from('quizzes')
         .delete()

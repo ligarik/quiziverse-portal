@@ -15,7 +15,8 @@ import { Loader2, ArrowLeft, ArrowRight, CheckCircle2 } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import { useToast } from '@/components/ui/use-toast';
-import { supabase, Quiz, Question, Answer } from '@/integrations/supabase/client';
+import { supabase, Quiz, Question, Answer, QuestionType } from '@/integrations/supabase/client';
+import { Json } from '@/integrations/supabase/types';
 
 interface QuestionWithAnswers extends Question {
   answers: Answer[];
@@ -73,18 +74,55 @@ const TakeQuiz = () => {
         const questionsWithAnswers: QuestionWithAnswers[] = [];
         
         for (const question of questionsData || []) {
-          const { data: answersData, error: answersError } = await supabase
-            .from('answers')
-            .select('*')
-            .eq('question_id', question.id);
+          // Map database type to QuestionType enum
+          let questionType: QuestionType;
           
-          if (answersError) throw answersError;
+          switch (question.question_type) {
+            case 'single_choice':
+              questionType = QuestionType.SINGLE_CHOICE;
+              break;
+            case 'multiple_choice':
+              questionType = QuestionType.MULTIPLE_CHOICE;
+              break;
+            case 'text':
+              questionType = QuestionType.TEXT_INPUT;
+              break;
+            case 'true_false':
+              questionType = QuestionType.TRUE_FALSE;
+              break;
+            default:
+              questionType = QuestionType.SINGLE_CHOICE;
+          }
+          
+          // Get answers from options or create dummy answers
+          const answers: Answer[] = [];
+          
+          if (question.options) {
+            const options = question.options as any[];
+            const correctAnswers = question.correct_answers as any[];
+            
+            options.forEach((option, index) => {
+              answers.push({
+                id: option.id || index.toString(),
+                question_id: question.id,
+                answer_text: option.text,
+                is_correct: correctAnswers ? correctAnswers.includes(option.id || index.toString()) : false,
+                created_at: question.created_at
+              });
+            });
+          }
           
           questionsWithAnswers.push({
-            ...question,
-            text: question.content,
-            question_type: question.question_type,
-            answers: answersData || []
+            id: question.id,
+            quiz_id: question.quiz_id,
+            text: question.content,  // Map content to text for UI
+            content: question.content,
+            created_at: question.created_at,
+            question_type: questionType,
+            points: question.points,
+            image_url: question.image_url,
+            position: question.position,
+            answers
           });
         }
         
@@ -180,11 +218,11 @@ const TakeQuiz = () => {
         
         if (user && attemptId) {
           await supabase
-            .from('question_responses')
+            .from('answers')  // Use answers table instead of question_responses
             .insert({
               attempt_id: attemptId,
               question_id: question.id,
-              answer_id: selectedAnswerId || null,
+              user_answer: selectedAnswerId || null,
               is_correct: isCorrect
             });
         }

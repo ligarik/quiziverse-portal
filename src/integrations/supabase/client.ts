@@ -18,7 +18,7 @@ export type User = {
   created_at?: string;
 };
 
-// Update the QuestionType enum to include all question types used in the app
+// Update the QuestionType enum to match the database schema
 export enum QuestionType {
   SINGLE_CHOICE = 'single_choice',
   MULTIPLE_CHOICE = 'multiple_choice',
@@ -44,7 +44,7 @@ export type Quiz = {
 export type Question = {
   id: string;
   quiz_id: string;
-  text: string; // For UI, but matches to content in DB
+  text: string; // For UI, but maps to content in DB
   content: string; // This is the DB column name
   created_at: string;
   question_type: QuestionType;

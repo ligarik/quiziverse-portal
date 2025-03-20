@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
@@ -25,6 +26,7 @@ const BrowseQuizzes = () => {
     const fetchQuizzes = async () => {
       setIsLoading(true);
       try {
+        // Create the query with explicit typing
         let query = supabase
           .from('quizzes')
           .select('*')
@@ -41,7 +43,21 @@ const BrowseQuizzes = () => {
           throw error;
         }
 
-        setQuizzes(data || []);
+        // Convert database records to Quiz type
+        const formattedQuizzes: Quiz[] = (data || []).map(item => ({
+          id: item.id,
+          title: item.title,
+          description: item.description || '',
+          created_at: item.created_at,
+          created_by: item.created_by,
+          is_public: item.is_public,
+          is_published: item.is_published || false,
+          time_limit: item.time_limit,
+          randomize_questions: item.randomize_questions,
+          show_feedback: item.show_feedback
+        }));
+
+        setQuizzes(formattedQuizzes);
       } catch (error: any) {
         console.error('Error fetching quizzes:', error);
         toast({

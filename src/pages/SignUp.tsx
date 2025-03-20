@@ -45,13 +45,18 @@ const SignUp = () => {
     
     try {
       setIsLoading(true);
-      const result = await signUp(email, password);
+      const { error, data } = await signUp(email, password);
       
-      if (result.success) {
-        setSuccess(result.message);
-        // Не перенаправляем пользователя после регистрации, так как ему нужно подтвердить email
+      if (error) {
+        // Handle specific Supabase error messages
+        if (error.message) {
+          setError(error.message);
+        } else {
+          setError('Произошла ошибка при регистрации');
+        }
       } else {
-        setError(result.message);
+        // Registration successful
+        setSuccess('Регистрация прошла успешно! Проверьте вашу почту для подтверждения аккаунта.');
       }
     } catch (error) {
       console.error('Error in signup form:', error);

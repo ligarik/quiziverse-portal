@@ -1,33 +1,21 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
-import { Button } from '@/components/ui/button';
-import { 
-  Card, 
-  CardContent, 
-  CardDescription, 
-  CardHeader, 
-  CardTitle 
-} from '@/components/ui/card';
-import { Loader2, ArrowLeft } from 'lucide-react';
-import Navbar from '@/components/Navbar';
-import Footer from '@/components/Footer';
-import { useToast } from '@/components/ui/use-toast';
-import { supabase } from '@/integrations/supabase/client';
-import type { Quiz, Question } from '@/integrations/supabase/client';
+import { supabase, Question, QuestionType } from '@/integrations/supabase/client';
+import { Json } from '@/integrations/supabase/types';
 
-// Update the AttemptWithUser type to match the database structure
-type AttemptWithUser = {
+interface AttemptWithUser {
   id: string;
   quiz_id: string;
   user_id: string;
-  score: number | null;
-  max_score: number | null;
+  user_email: string;
+  score: number;
+  max_score: number;
   started_at: string;
   completed_at: string | null;
   is_graded: boolean;
-  user_email: string;
-};
+  created_at: string;
+}
 
 const QuizStats = () => {
   const { id } = useParams<{ id: string }>();
@@ -45,38 +33,31 @@ const QuizStats = () => {
       try {
         setIsLoadingAttempts(true);
         
-        // Fix the query to avoid type errors
-        const { data, error } = await supabase
+        const { data: attemptsData, error: attemptsError } = await supabase
           .from('quiz_attempts')
           .select(`
-            id, 
-            quiz_id, 
-            user_id, 
-            score, 
-            max_score, 
-            started_at, 
-            completed_at, 
-            is_graded,
-            users:user_id (email)
+            *,
+            users:user_id(email)
           `)
-          .eq('quiz_id', id);
-          
-        if (error) throw error;
+          .eq('quiz_id', id)
+          .not('completed_at', 'is', null);
+        
+        if (attemptsError) throw attemptsError;
 
-        // Transform the data to include user_email
-        const attemptsWithUser: AttemptWithUser[] = data.map((attempt: any) => ({
+        const formattedAttempts: AttemptWithUser[] = (attemptsData || []).map(attempt => ({
           id: attempt.id,
           quiz_id: attempt.quiz_id,
           user_id: attempt.user_id,
-          score: attempt.score,
-          max_score: attempt.max_score,
+          user_email: attempt.users?.email || 'Unknown',
+          score: attempt.score || 0,
+          max_score: attempt.max_score || 0,
           started_at: attempt.started_at,
           completed_at: attempt.completed_at,
           is_graded: attempt.is_graded,
-          user_email: attempt.users?.email
+          created_at: attempt.started_at
         }));
         
-        setAttempts(attemptsWithUser);
+        setAttempts(formattedAttempts);
       } catch (error) {
         console.error('Error fetching attempts:', error);
       } finally {
@@ -107,7 +88,17 @@ const QuizStats = () => {
         
         if (questionsError) throw questionsError;
         
-        setQuestions(questionsData);
+        setQuestions(questionsData.map(q => ({
+          id: q.id,
+          quiz_id: q.quiz_id,
+          content: q.content,
+          text: q.content,
+          created_at: q.created_at,
+          question_type: mapDatabaseQuestionType(q.question_type),
+          points: q.points,
+          image_url: q.image_url,
+          position: q.position
+        })));
       } catch (error) {
         console.error('Error fetching quiz and questions:', error);
         toast({
@@ -200,3 +191,22 @@ const QuizStats = () => {
 };
 
 export default QuizStats;
+
+function mapDatabaseQuestionType(dbType: string): QuestionType {
+  switch (dbType) {
+    case 'single_choice':
+      return QuestionType.SINGLE_CHOICE;
+    case 'multiple_choice':
+      return QuestionType.MULTIPLE_CHOICE;
+    case 'text':
+      return QuestionType.TEXT_INPUT;
+    case 'true_false':
+      return QuestionType.TRUE_FALSE;
+    case 'matching':
+      return QuestionType.MATCHING;
+    case 'number':
+      return QuestionType.NUMBER_INPUT;
+    default:
+      return QuestionType.SINGLE_CHOICE;
+  }
+}
