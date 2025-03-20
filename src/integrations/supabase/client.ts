@@ -82,3 +82,22 @@ export type QuestionResponse = {
   created_at: string;
   user_answer?: string;
 };
+
+// Add types for custom fields
+export type CustomField = {
+  id: string;
+  quiz_id: string;
+  field_name: string;
+  field_label: string;
+  is_required: boolean;
+  position: number;
+  created_at: string;
+};
+
+export type AttemptField = {
+  id: string;
+  attempt_id: string;
+  field_name: string;
+  field_value: string;
+  created_at: string;
+};

@@ -161,6 +161,38 @@ export type Database = {
         }
         Relationships: []
       }
+      quiz_attempt_fields: {
+        Row: {
+          attempt_id: string | null
+          created_at: string | null
+          field_name: string
+          field_value: string | null
+          id: string
+        }
+        Insert: {
+          attempt_id?: string | null
+          created_at?: string | null
+          field_name: string
+          field_value?: string | null
+          id?: string
+        }
+        Update: {
+          attempt_id?: string | null
+          created_at?: string | null
+          field_name?: string
+          field_value?: string | null
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quiz_attempt_fields_attempt_id_fkey"
+            columns: ["attempt_id"]
+            isOneToOne: false
+            referencedRelation: "quiz_attempts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       quiz_attempts: {
         Row: {
           completed_at: string | null
@@ -195,6 +227,44 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "quiz_attempts_quiz_id_fkey"
+            columns: ["quiz_id"]
+            isOneToOne: false
+            referencedRelation: "quizzes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      quiz_custom_fields: {
+        Row: {
+          created_at: string | null
+          field_label: string
+          field_name: string
+          id: string
+          is_required: boolean | null
+          position: number
+          quiz_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          field_label: string
+          field_name: string
+          id?: string
+          is_required?: boolean | null
+          position: number
+          quiz_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          field_label?: string
+          field_name?: string
+          id?: string
+          is_required?: boolean | null
+          position?: number
+          quiz_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quiz_custom_fields_quiz_id_fkey"
             columns: ["quiz_id"]
             isOneToOne: false
             referencedRelation: "quizzes"

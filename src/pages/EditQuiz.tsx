@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
@@ -112,12 +111,13 @@ const EditQuiz = () => {
         const questionsWithAnswers: QuestionWithAnswers[] = [];
         
         for (const question of questionsData || []) {
-          // Convert database type to enum type
           const questionType = question.question_type as string;
           const enumQuestionType = questionType === 'single_choice' ? QuestionType.SINGLE_CHOICE :
                                   questionType === 'multiple_choice' ? QuestionType.MULTIPLE_CHOICE :
                                   questionType === 'text' ? QuestionType.TEXT_INPUT :
                                   questionType === 'true_false' ? QuestionType.TRUE_FALSE :
+                                  questionType === 'matching' ? QuestionType.MATCHING :
+                                  questionType === 'number' ? QuestionType.NUMBER_INPUT :
                                   QuestionType.SINGLE_CHOICE;
           
           const questionWithText = {
@@ -133,13 +133,24 @@ const EditQuiz = () => {
             const correctAnswers = question.correct_answers as any[];
             
             options.forEach((option, index) => {
-              dummyAnswers.push({
-                id: option.id || index.toString(),
-                question_id: question.id,
-                answer_text: option.text,
-                is_correct: correctAnswers ? correctAnswers.includes(option.id || index.toString()) : false,
-                created_at: question.created_at
-              });
+              if (questionType === 'matching') {
+                dummyAnswers.push({
+                  id: option.id || index.toString(),
+                  question_id: question.id,
+                  answer_text: option.text,
+                  matching_text: option.matchingText,
+                  is_correct: correctAnswers ? correctAnswers.includes(option.id || index.toString()) : false,
+                  created_at: question.created_at
+                });
+              } else {
+                dummyAnswers.push({
+                  id: option.id || index.toString(),
+                  question_id: question.id,
+                  answer_text: option.text,
+                  is_correct: correctAnswers ? correctAnswers.includes(option.id || index.toString()) : false,
+                  created_at: question.created_at
+                });
+              }
             });
           }
           
@@ -150,6 +161,19 @@ const EditQuiz = () => {
                 id: '0',
                 question_id: question.id,
                 answer_text: textAnswers[0],
+                is_correct: true,
+                created_at: question.created_at
+              });
+            }
+          }
+          
+          if (questionType === 'number' && question.correct_answers) {
+            const numberAnswers = question.correct_answers as number[];
+            if (numberAnswers.length > 0) {
+              dummyAnswers.push({
+                id: '0',
+                question_id: question.id,
+                answer_text: numberAnswers[0].toString(),
                 is_correct: true,
                 created_at: question.created_at
               });

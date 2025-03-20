@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,9 +11,16 @@ import {
   CardTitle,
   CardDescription,
 } from '@/components/ui/card';
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
 import { Clock, Shuffle, MessageCircle } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { Quiz, supabase } from '@/integrations/supabase/client';
+import CustomFieldsSettings from './CustomFieldsSettings';
 
 interface QuizSettingsProps {
   quiz: Quiz;
@@ -24,6 +32,7 @@ const QuizSettings = ({ quiz, onSettingsUpdated }: QuizSettingsProps) => {
   const [timeLimit, setTimeLimit] = useState<number | undefined>(quiz.time_limit);
   const [randomizeQuestions, setRandomizeQuestions] = useState<boolean>(quiz.randomize_questions || false);
   const [showFeedback, setShowFeedback] = useState<boolean>(quiz.show_feedback || false);
+  const [activeTab, setActiveTab] = useState("general");
   
   const { toast } = useToast();
   
@@ -73,88 +82,103 @@ const QuizSettings = ({ quiz, onSettingsUpdated }: QuizSettingsProps) => {
   };
   
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Настройки теста</CardTitle>
-        <CardDescription>
-          Настройте параметры прохождения теста
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Clock className="h-4 w-4 text-muted-foreground" />
-              <Label htmlFor="timeLimit">Лимит времени</Label>
-            </div>
-            <Switch
-              id="timeLimitSwitch"
-              checked={timeLimit !== undefined}
-              onCheckedChange={(checked) => setTimeLimit(checked ? 30 : undefined)}
-            />
-          </div>
-          
-          {timeLimit !== undefined && (
-            <div className="grid grid-cols-2 gap-2 mt-2">
-              <Input
-                id="timeLimit"
-                type="number"
-                min="1"
-                max="180"
-                value={timeLimit}
-                onChange={(e) => setTimeLimit(Number(e.target.value))}
-                className="w-full"
-              />
-              <div className="flex items-center">
-                <span className="text-sm text-muted-foreground">минут</span>
+    <div className="space-y-6">
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList className="mb-4">
+          <TabsTrigger value="general">Основные настройки</TabsTrigger>
+          <TabsTrigger value="custom_fields">Дополнительные поля</TabsTrigger>
+        </TabsList>
+        
+        <TabsContent value="general">
+          <Card>
+            <CardHeader>
+              <CardTitle>Настройки теста</CardTitle>
+              <CardDescription>
+                Настройте параметры прохождения теста
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Clock className="h-4 w-4 text-muted-foreground" />
+                    <Label htmlFor="timeLimit">Лимит времени</Label>
+                  </div>
+                  <Switch
+                    id="timeLimitSwitch"
+                    checked={timeLimit !== undefined}
+                    onCheckedChange={(checked) => setTimeLimit(checked ? 30 : undefined)}
+                  />
+                </div>
+                
+                {timeLimit !== undefined && (
+                  <div className="grid grid-cols-2 gap-2 mt-2">
+                    <Input
+                      id="timeLimit"
+                      type="number"
+                      min="1"
+                      max="180"
+                      value={timeLimit}
+                      onChange={(e) => setTimeLimit(Number(e.target.value))}
+                      className="w-full"
+                    />
+                    <div className="flex items-center">
+                      <span className="text-sm text-muted-foreground">минут</span>
+                    </div>
+                  </div>
+                )}
               </div>
-            </div>
-          )}
-        </div>
+              
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Shuffle className="h-4 w-4 text-muted-foreground" />
+                    <Label htmlFor="randomizeQuestions">Случайный порядок вопросов</Label>
+                  </div>
+                  <Switch
+                    id="randomizeQuestions"
+                    checked={randomizeQuestions}
+                    onCheckedChange={setRandomizeQuestions}
+                  />
+                </div>
+                <div className="text-sm text-muted-foreground">
+                  Вопросы будут показаны в случайном порядке для каждого пользователя
+                </div>
+              </div>
+              
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <MessageCircle className="h-4 w-4 text-muted-foreground" />
+                    <Label htmlFor="showFeedback">Показывать правильные ответы</Label>
+                  </div>
+                  <Switch
+                    id="showFeedback"
+                    checked={showFeedback}
+                    onCheckedChange={setShowFeedback}
+                  />
+                </div>
+                <div className="text-sm text-muted-foreground">
+                  После прохождения пользователи увидят правильные ответы и свои ошибки
+                </div>
+              </div>
+              
+              <Button 
+                onClick={saveSettings}
+                disabled={isLoading}
+                className="w-full"
+              >
+                Сохранить настройки
+              </Button>
+            </CardContent>
+          </Card>
+        </TabsContent>
         
-        <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Shuffle className="h-4 w-4 text-muted-foreground" />
-              <Label htmlFor="randomizeQuestions">Случайный порядок вопросов</Label>
-            </div>
-            <Switch
-              id="randomizeQuestions"
-              checked={randomizeQuestions}
-              onCheckedChange={setRandomizeQuestions}
-            />
-          </div>
-          <div className="text-sm text-muted-foreground">
-            Вопросы будут показаны в случайном порядке для каждого пользователя
-          </div>
-        </div>
-        
-        <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <MessageCircle className="h-4 w-4 text-muted-foreground" />
-              <Label htmlFor="showFeedback">Показывать правильные ответы</Label>
-            </div>
-            <Switch
-              id="showFeedback"
-              checked={showFeedback}
-              onCheckedChange={setShowFeedback}
-            />
-          </div>
-          <div className="text-sm text-muted-foreground">
-            После прохождения пользователи увидят правильные ответы и свои ошибки
-          </div>
-        </div>
-        
-        <Button 
-          onClick={saveSettings}
-          disabled={isLoading}
-          className="w-full"
-        >
-          Сохранить настройки
-        </Button>
-      </CardContent>
-    </Card>
+        <TabsContent value="custom_fields">
+          <CustomFieldsSettings quizId={quiz.id} />
+        </TabsContent>
+      </Tabs>
+    </div>
   );
 };
 

@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
@@ -10,11 +11,27 @@ import {
   CardHeader,
   CardTitle
 } from '@/components/ui/card';
-import { ArrowLeft, Loader2 } from 'lucide-react';
+import { 
+  ArrowLeft, 
+  Loader2, 
+  ChevronRight,
+  ChevronDown 
+} from 'lucide-react';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import GradeTextAnswers from '@/components/GradeTextAnswers';
-import { supabase, Quiz, Question, QuestionType } from '@/integrations/supabase/client';
+import { 
+  supabase, 
+  Quiz, 
+  Question, 
+  QuestionType, 
+  AttemptField 
+} from '@/integrations/supabase/client';
 
 interface AttemptWithUser {
   id: string;
@@ -26,6 +43,7 @@ interface AttemptWithUser {
   started_at: string;
   completed_at: string | null;
   is_graded: boolean;
+  custom_fields?: AttemptField[];
 }
 
 const QuizStats = () => {
@@ -39,6 +57,7 @@ const QuizStats = () => {
   const [questions, setQuestions] = useState<Question[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedAttemptId, setSelectedAttemptId] = useState<string | null>(null);
+  const [openAttempts, setOpenAttempts] = useState<string[]>([]);
   
   useEffect(() => {
     const fetchQuizData = async () => {
@@ -67,19 +86,32 @@ const QuizStats = () => {
         
         if (attemptsError) throw attemptsError;
         
-        const formattedAttempts: AttemptWithUser[] = attemptsData.map(attempt => ({
-          id: attempt.id,
-          quiz_id: attempt.quiz_id,
-          user_id: attempt.user_id,
-          user_email: 'Unknown User', // We don't have direct access to emails here
-          score: attempt.score || 0,
-          max_score: attempt.max_score || 0,
-          started_at: attempt.started_at,
-          completed_at: attempt.completed_at,
-          is_graded: attempt.is_graded
-        }));
+        const attemptsWithFields: AttemptWithUser[] = [];
         
-        setAttempts(formattedAttempts);
+        for (const attempt of attemptsData) {
+          // Get custom fields for this attempt
+          const { data: fieldData, error: fieldError } = await supabase
+            .from('quiz_attempt_fields')
+            .select('*')
+            .eq('attempt_id', attempt.id);
+          
+          if (fieldError) console.error('Error fetching custom fields:', fieldError);
+          
+          attemptsWithFields.push({
+            id: attempt.id,
+            quiz_id: attempt.quiz_id,
+            user_id: attempt.user_id,
+            user_email: 'Unknown User', // We don't have direct access to emails here
+            score: attempt.score || 0,
+            max_score: attempt.max_score || 0,
+            started_at: attempt.started_at,
+            completed_at: attempt.completed_at,
+            is_graded: attempt.is_graded,
+            custom_fields: fieldData || []
+          });
+        }
+        
+        setAttempts(attemptsWithFields);
         
         // Get questions for this quiz
         const { data: questionsData, error: questionsError } = await supabase
@@ -163,19 +195,19 @@ const QuizStats = () => {
         .not('completed_at', 'is', null)
         .then(({ data }) => {
           if (data) {
-            const formattedAttempts: AttemptWithUser[] = data.map(attempt => ({
-              id: attempt.id,
-              quiz_id: attempt.quiz_id,
-              user_id: attempt.user_id,
-              user_email: 'Unknown User',
-              score: attempt.score || 0,
-              max_score: attempt.max_score || 0,
-              started_at: attempt.started_at,
-              completed_at: attempt.completed_at,
-              is_graded: attempt.is_graded
-            }));
+            const updatedAttempts = attempts.map(attempt => {
+              const updatedAttempt = data.find(a => a.id === attempt.id);
+              if (updatedAttempt) {
+                return {
+                  ...attempt,
+                  score: updatedAttempt.score,
+                  is_graded: updatedAttempt.is_graded
+                };
+              }
+              return attempt;
+            });
             
-            setAttempts(formattedAttempts);
+            setAttempts(updatedAttempts);
           }
         });
     }
@@ -184,6 +216,14 @@ const QuizStats = () => {
       title: 'Проверка завершена',
       description: 'Ответы успешно проверены',
     });
+  };
+
+  const toggleAttemptDetails = (attemptId: string) => {
+    if (openAttempts.includes(attemptId)) {
+      setOpenAttempts(openAttempts.filter(id => id !== attemptId));
+    } else {
+      setOpenAttempts([...openAttempts, attemptId]);
+    }
   };
 
   if (isLoading) {
@@ -247,43 +287,75 @@ const QuizStats = () => {
                 ) : (
                   <div className="space-y-4">
                     {attempts.map((attempt) => {
-                      const hasTextQuestions = questions.some(q => q.question_type === 'text');
+                      const hasTextQuestions = questions.some(q => q.question_type === QuestionType.TEXT_INPUT);
                       const needsGrading = hasTextQuestions && !attempt.is_graded;
+                      const isOpen = openAttempts.includes(attempt.id);
+                      const hasCustomFields = attempt.custom_fields && attempt.custom_fields.length > 0;
                       
                       return (
-                        <div 
-                          key={attempt.id} 
-                          className="border rounded-md p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4"
+                        <Collapsible
+                          key={attempt.id}
+                          open={isOpen}
+                          onOpenChange={() => toggleAttemptDetails(attempt.id)}
+                          className="border rounded-md overflow-hidden"
                         >
-                          <div>
-                            <div className="font-medium">
-                              {attempt.user_id === user?.id ? 'Вы' : `Пользователь ${attempt.user_id.substring(0, 6)}`}
+                          <div className="p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                            <div className="flex-1">
+                              <CollapsibleTrigger className="flex items-center gap-2 font-medium hover:underline cursor-pointer w-full text-left">
+                                {attempt.user_id === user?.id ? 'Вы' : `Пользователь ${attempt.user_id.substring(0, 6)}`}
+                                {hasCustomFields && (
+                                  <ChevronDown className={`h-4 w-4 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+                                )}
+                              </CollapsibleTrigger>
+                              <div className="text-sm text-muted-foreground mt-1">
+                                Дата: {new Date(attempt.completed_at || attempt.started_at).toLocaleString()}
+                              </div>
+                              <div className="mt-1">
+                                {attempt.is_graded ? (
+                                  <span className="text-base">
+                                    Результат: {attempt.score} из {attempt.max_score} 
+                                    ({Math.round((attempt.score / attempt.max_score) * 100)}%)
+                                  </span>
+                                ) : (
+                                  <span className="text-amber-500">
+                                    Ожидает проверки
+                                  </span>
+                                )}
+                              </div>
                             </div>
-                            <div className="text-sm text-muted-foreground">
-                              Дата: {new Date(attempt.completed_at || attempt.started_at).toLocaleString()}
-                            </div>
-                            <div className="mt-1">
-                              {attempt.is_graded ? (
-                                <span className="text-base">
-                                  Результат: {attempt.score} из {attempt.max_score} 
-                                  ({Math.round((attempt.score / attempt.max_score) * 100)}%)
-                                </span>
-                              ) : (
-                                <span className="text-amber-500">
-                                  Ожидает проверки
-                                </span>
-                              )}
-                            </div>
+                            
+                            {needsGrading && user?.id === quiz?.created_by && (
+                              <Button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleGradeAttempt(attempt.id);
+                                }}
+                              >
+                                Проверить ответы
+                              </Button>
+                            )}
                           </div>
                           
-                          {needsGrading && user?.id === quiz?.created_by && (
-                            <Button
-                              onClick={() => handleGradeAttempt(attempt.id)}
-                            >
-                              Проверить ответы
-                            </Button>
-                          )}
-                        </div>
+                          <CollapsibleContent>
+                            {hasCustomFields ? (
+                              <div className="p-4 border-t bg-muted/40">
+                                <h4 className="text-sm font-medium mb-2">Дополнительная информация:</h4>
+                                <dl className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                  {attempt.custom_fields.map(field => (
+                                    <div key={field.id} className="flex flex-col">
+                                      <dt className="text-xs text-muted-foreground">{field.field_name}:</dt>
+                                      <dd className="font-medium">{field.field_value}</dd>
+                                    </div>
+                                  ))}
+                                </dl>
+                              </div>
+                            ) : (
+                              <div className="p-4 border-t bg-muted/40 text-sm text-muted-foreground">
+                                Дополнительная информация отсутствует
+                              </div>
+                            )}
+                          </CollapsibleContent>
+                        </Collapsible>
                       );
                     })}
                   </div>

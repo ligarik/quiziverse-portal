@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
@@ -19,6 +18,7 @@ import Footer from '@/components/Footer';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase, Quiz, Question, Answer, QuestionType } from '@/integrations/supabase/client';
 import { Json } from '@/integrations/supabase/types';
+import CustomFieldsForm from '@/components/CustomFieldsForm';
 
 interface QuestionWithAnswers extends Question {
   answers: Answer[];
@@ -29,13 +29,15 @@ const TakeQuiz = () => {
   const [quiz, setQuiz] = useState<Quiz | null>(null);
   const [questions, setQuestions] = useState<QuestionWithAnswers[]>([]);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-  const [selectedAnswers, setSelectedAnswers] = useState<Record<string, string>>({});
+  const [selectedAnswers, setSelectedAnswers] = useState<Record<string, string | string[]>>({});
   const [textAnswers, setTextAnswers] = useState<Record<string, string>>({});
+  const [numberAnswers, setNumberAnswers] = useState<Record<string, number>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [attemptId, setAttemptId] = useState<string | null>(null);
   const [quizComplete, setQuizComplete] = useState(false);
   const [score, setScore] = useState({ correct: 0, total: 0 });
+  const [customFieldsStep, setCustomFieldsStep] = useState(false);
   
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -93,6 +95,12 @@ const TakeQuiz = () => {
             case 'true_false':
               questionType = QuestionType.TRUE_FALSE;
               break;
+            case 'matching':
+              questionType = QuestionType.MATCHING;
+              break;
+            case 'number':
+              questionType = QuestionType.NUMBER_INPUT;
+              break;
             default:
               questionType = QuestionType.SINGLE_CHOICE;
           }
@@ -105,13 +113,24 @@ const TakeQuiz = () => {
             const correctAnswers = question.correct_answers as any[];
             
             options.forEach((option, index) => {
-              answers.push({
-                id: option.id || index.toString(),
-                question_id: question.id,
-                answer_text: option.text,
-                is_correct: correctAnswers ? correctAnswers.includes(option.id || index.toString()) : false,
-                created_at: question.created_at
-              });
+              if (questionType === QuestionType.MATCHING) {
+                answers.push({
+                  id: option.id || index.toString(),
+                  question_id: question.id,
+                  answer_text: option.text,
+                  matching_text: option.matchingText || "",
+                  is_correct: correctAnswers ? correctAnswers.includes(option.id || index.toString()) : false,
+                  created_at: question.created_at
+                });
+              } else {
+                answers.push({
+                  id: option.id || index.toString(),
+                  question_id: question.id,
+                  answer_text: option.text,
+                  is_correct: correctAnswers ? correctAnswers.includes(option.id || index.toString()) : false,
+                  created_at: question.created_at
+                });
+              }
             });
           } else if (questionType === QuestionType.TEXT_INPUT && question.correct_answers) {
             // For text input questions, create a single correct answer
@@ -120,6 +139,16 @@ const TakeQuiz = () => {
               id: "0",
               question_id: question.id,
               answer_text: correctAnswer,
+              is_correct: true,
+              created_at: question.created_at
+            });
+          } else if (questionType === QuestionType.NUMBER_INPUT && question.correct_answers) {
+            // For number input questions, create a single correct answer
+            const correctAnswer = (question.correct_answers as any[])[0] || 0;
+            answers.push({
+              id: "0",
+              question_id: question.id,
+              answer_text: correctAnswer.toString(),
               is_correct: true,
               created_at: question.created_at
             });
@@ -137,6 +166,14 @@ const TakeQuiz = () => {
             position: question.position,
             answers
           });
+        }
+        
+        // If randomize_questions is enabled, shuffle the questions
+        if (quizData.randomize_questions) {
+          questionsWithAnswers.sort(() => Math.random() - 0.5);
+        } else {
+          // Otherwise, sort by position
+          questionsWithAnswers.sort((a, b) => a.position - b.position);
         }
         
         setQuiz(quizData);
@@ -157,6 +194,18 @@ const TakeQuiz = () => {
           if (attemptError) throw attemptError;
           
           setAttemptId(attemptData.id);
+          
+          // Check if there are custom fields
+          const { data: customFields, error: customFieldsError } = await supabase
+            .from('quiz_custom_fields')
+            .select('*')
+            .eq('quiz_id', id);
+          
+          if (customFieldsError) throw customFieldsError;
+          
+          if (customFields && customFields.length > 0) {
+            setCustomFieldsStep(true);
+          }
         }
       } catch (error) {
         console.error('Ошибка при загрузке теста:', error);
@@ -193,10 +242,45 @@ const TakeQuiz = () => {
     });
   };
 
+  const handleSelectMultipleAnswers = (questionId: string, answerId: string) => {
+    const currentAnswers = selectedAnswers[questionId] as string[] || [];
+    
+    if (currentAnswers.includes(answerId)) {
+      setSelectedAnswers({
+        ...selectedAnswers,
+        [questionId]: currentAnswers.filter(id => id !== answerId)
+      });
+    } else {
+      setSelectedAnswers({
+        ...selectedAnswers,
+        [questionId]: [...currentAnswers, answerId]
+      });
+    }
+  };
+
   const handleTextAnswer = (questionId: string, text: string) => {
     setTextAnswers({
       ...textAnswers,
       [questionId]: text
+    });
+  };
+
+  const handleNumberAnswer = (questionId: string, value: number) => {
+    setNumberAnswers({
+      ...numberAnswers,
+      [questionId]: value
+    });
+  };
+
+  const handleMatchingSelection = (questionId: string, itemId: string, matchId: string) => {
+    const currentMatches = (selectedAnswers[questionId] || {}) as Record<string, string>;
+    
+    setSelectedAnswers({
+      ...selectedAnswers,
+      [questionId]: {
+        ...currentMatches,
+        [itemId]: matchId
+      }
     });
   };
 
@@ -207,6 +291,13 @@ const TakeQuiz = () => {
     const unansweredQuestions = questions.filter(q => {
       if (q.question_type === QuestionType.TEXT_INPUT) {
         return !textAnswers[q.id];
+      } else if (q.question_type === QuestionType.NUMBER_INPUT) {
+        return numberAnswers[q.id] === undefined;
+      } else if (q.question_type === QuestionType.MULTIPLE_CHOICE) {
+        return !selectedAnswers[q.id] || (selectedAnswers[q.id] as string[]).length === 0;
+      } else if (q.question_type === QuestionType.MATCHING) {
+        const matches = selectedAnswers[q.id] as Record<string, string> || {};
+        return !matches || Object.keys(matches).length < q.answers.length;
       } else {
         return !selectedAnswers[q.id];
       }
@@ -236,34 +327,70 @@ const TakeQuiz = () => {
       let totalPoints = 0;
       
       for (const question of questions) {
-        const isTextQuestion = question.question_type === QuestionType.TEXT_INPUT;
-        const userAnswer = isTextQuestion ? textAnswers[question.id] : selectedAnswers[question.id];
-        
         let isCorrect = false;
+        let userAnswer: any = null;
         
-        if (isTextQuestion) {
-          // For text questions, we'll mark them for manual grading initially
-          // and set is_correct to null (pending)
-          isCorrect = false; // Will be manually graded later
+        if (question.question_type === QuestionType.TEXT_INPUT) {
+          // For text questions
+          userAnswer = textAnswers[question.id];
+          // Will be manually graded
+          isCorrect = false;
+        } else if (question.question_type === QuestionType.NUMBER_INPUT) {
+          // For number questions
+          userAnswer = numberAnswers[question.id];
+          const correctNumber = Number(question.answers[0]?.answer_text || 0);
+          isCorrect = userAnswer === correctNumber;
+        } else if (question.question_type === QuestionType.MULTIPLE_CHOICE) {
+          // For multiple choice questions
+          userAnswer = selectedAnswers[question.id] || [];
+          const correctIds = question.answers
+            .filter(a => a.is_correct)
+            .map(a => a.id);
+          
+          isCorrect = 
+            (userAnswer as string[]).length === correctIds.length && 
+            correctIds.every(id => (userAnswer as string[]).includes(id));
+        } else if (question.question_type === QuestionType.MATCHING) {
+          // For matching questions
+          const selectedMatches = selectedAnswers[question.id] as Record<string, string> || {};
+          userAnswer = selectedMatches;
+          
+          // Check if all matches are correct
+          const correctMatches = question.answers.map((a, index) => ({
+            id: a.id,
+            matchingText: a.matching_text
+          }));
+          
+          isCorrect = Object.entries(selectedMatches).every(([itemId, matchId]) => {
+            const answerIndex = question.answers.findIndex(a => a.id === itemId);
+            const selectedMatchIndex = question.answers.findIndex(a => a.id === matchId);
+            
+            if (answerIndex === -1 || selectedMatchIndex === -1) return false;
+            
+            // The matching is correct if the matching_text of the selected match
+            // is the same as the matching_text of the correct match
+            return question.answers[selectedMatchIndex].matching_text === question.answers[answerIndex].matching_text;
+          });
         } else {
-          // For choice questions, check if the selected answer is correct
+          // For single choice and true/false questions
+          userAnswer = selectedAnswers[question.id];
           const correctAnswer = question.answers.find(a => a.is_correct);
           isCorrect = Boolean(userAnswer && correctAnswer?.id === userAnswer);
         }
         
-        if (isCorrect && !isTextQuestion) {
+        if (isCorrect) {
           correctAnswers++;
           totalPoints += question.points || 1;
         }
         
         if (user && attemptId) {
           await supabase
-            .from('answers')  // Using answers table instead of question_responses
+            .from('answers')
             .insert({
               attempt_id: attemptId,
               question_id: question.id,
-              user_answer: isTextQuestion ? userAnswer : selectedAnswers[question.id],
-              is_correct: isTextQuestion ? null : isCorrect // null for text questions pending review
+              user_answer: userAnswer,
+              is_correct: question.question_type === QuestionType.TEXT_INPUT ? null : isCorrect // null for text questions pending review
             });
         }
       }
@@ -275,7 +402,7 @@ const TakeQuiz = () => {
         await supabase
           .from('quiz_attempts')
           .update({
-            score: correctAnswers,
+            score: totalPoints,
             completed_at: new Date().toISOString(),
             is_graded: !hasTextQuestions // Only mark as graded if there are no text questions
           })
@@ -298,6 +425,10 @@ const TakeQuiz = () => {
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleCustomFieldsComplete = () => {
+    setCustomFieldsStep(false);
   };
 
   if (isLoading) {
@@ -332,7 +463,13 @@ const TakeQuiz = () => {
             Назад к тестам
           </Button>
           
-          {!quizComplete ? (
+          {customFieldsStep && attemptId ? (
+            <CustomFieldsForm 
+              quizId={id || ''} 
+              attemptId={attemptId} 
+              onComplete={handleCustomFieldsComplete} 
+            />
+          ) : !quizComplete ? (
             <Card>
               <CardHeader>
                 <div className="flex items-center justify-between">
@@ -384,8 +521,67 @@ const TakeQuiz = () => {
                               className="min-h-[120px]"
                             />
                           </div>
+                        ) : currentQuestion.question_type === QuestionType.NUMBER_INPUT ? (
+                          // Number input question type
+                          <div className="space-y-2">
+                            <Input
+                              type="number"
+                              placeholder="Введите числовой ответ"
+                              value={numberAnswers[currentQuestion.id] !== undefined ? numberAnswers[currentQuestion.id] : ''}
+                              onChange={(e) => handleNumberAnswer(currentQuestion.id, Number(e.target.value))}
+                              className="max-w-[200px]"
+                            />
+                          </div>
+                        ) : currentQuestion.question_type === QuestionType.MULTIPLE_CHOICE ? (
+                          // Multiple choice question type
+                          currentQuestion.answers.map(answer => {
+                            const answers = selectedAnswers[currentQuestion.id] as string[] || [];
+                            const isSelected = answers.includes(answer.id);
+                            
+                            return (
+                              <Button
+                                key={answer.id}
+                                variant={isSelected ? "default" : "outline"}
+                                className="w-full justify-start text-left h-auto py-4 px-6"
+                                onClick={() => handleSelectMultipleAnswers(currentQuestion.id, answer.id)}
+                              >
+                                {answer.answer_text}
+                              </Button>
+                            );
+                          })
+                        ) : currentQuestion.question_type === QuestionType.MATCHING ? (
+                          // Matching question type
+                          <div className="space-y-4">
+                            {currentQuestion.answers.map((answer, index) => {
+                              const matches = selectedAnswers[currentQuestion.id] as Record<string, string> || {};
+                              const selectedMatchId = matches[answer.id];
+                              
+                              // Get selected match text
+                              const selectedMatch = selectedMatchId 
+                                ? currentQuestion.answers.find(a => a.id === selectedMatchId)
+                                : undefined;
+                              
+                              return (
+                                <div key={answer.id} className="p-3 border rounded-md">
+                                  <div className="font-medium mb-2">{answer.answer_text}</div>
+                                  <div className="grid grid-cols-2 gap-2">
+                                    {currentQuestion.answers.map(matchOption => (
+                                      <Button
+                                        key={`${answer.id}-${matchOption.id}`}
+                                        variant={selectedMatchId === matchOption.id ? "default" : "outline"}
+                                        className="w-full justify-start text-left h-auto py-2 px-3 text-sm"
+                                        onClick={() => handleMatchingSelection(currentQuestion.id, answer.id, matchOption.id)}
+                                      >
+                                        {matchOption.matching_text}
+                                      </Button>
+                                    ))}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
                         ) : (
-                          // Multiple choice question types
+                          // Single choice and true/false question types
                           currentQuestion.answers.map(answer => (
                             <Button
                               key={answer.id}
@@ -417,9 +613,17 @@ const TakeQuiz = () => {
                   <Button
                     onClick={handleNextQuestion}
                     disabled={
-                      (currentQuestion?.question_type === QuestionType.TEXT_INPUT 
+                      currentQuestion?.question_type === QuestionType.TEXT_INPUT 
                         ? !textAnswers[currentQuestion?.id] 
-                        : !selectedAnswers[currentQuestion?.id])
+                        : currentQuestion?.question_type === QuestionType.NUMBER_INPUT
+                          ? numberAnswers[currentQuestion?.id] === undefined
+                          : currentQuestion?.question_type === QuestionType.MULTIPLE_CHOICE
+                            ? !selectedAnswers[currentQuestion?.id] || (selectedAnswers[currentQuestion?.id] as string[]).length === 0
+                            : currentQuestion?.question_type === QuestionType.MATCHING
+                              ? !selectedAnswers[currentQuestion?.id] || 
+                                Object.keys(selectedAnswers[currentQuestion?.id] as Record<string, string> || {}).length < 
+                                (currentQuestion?.answers.length || 0)
+                              : !selectedAnswers[currentQuestion?.id]
                     }
                   >
                     Далее
@@ -505,3 +709,4 @@ const TakeQuiz = () => {
 };
 
 export default TakeQuiz;
+
