@@ -277,8 +277,18 @@ const TakeQuiz = () => {
                   <div className="space-y-6">
                     <div>
                       <h3 className="text-lg font-semibold mb-4">
-                        {currentQuestion.question_text}
+                        {currentQuestion.text}
                       </h3>
+                      
+                      {currentQuestion.image_url && (
+                        <div className="mb-4">
+                          <img 
+                            src={currentQuestion.image_url}
+                            alt="Question image"
+                            className="max-h-64 rounded-md object-contain mx-auto"
+                          />
+                        </div>
+                      )}
                       
                       <div className="space-y-3">
                         {currentQuestion.answers.map(answer => (
