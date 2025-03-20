@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
@@ -30,7 +29,6 @@ import {
   Plus, 
   Check, 
   Save,
-  Settings,
 } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
@@ -104,29 +102,52 @@ const EditQuiz = () => {
         const { data: questionsData, error: questionsError } = await supabase
           .from('questions')
           .select('*')
-          .eq('quiz_id', id);
+          .eq('quiz_id', id)
+          .order('position', { ascending: true });
         
         if (questionsError) throw questionsError;
         
         const questionsWithAnswers: QuestionWithAnswers[] = [];
         
         for (const question of questionsData || []) {
-          // Map the content field to text for UI compatibility
           const questionWithText = {
             ...question,
-            text: question.content // Map DB content field to text for UI
+            text: question.content
           };
           
-          const { data: answersData, error: answersError } = await supabase
-            .from('answers')
-            .select('*')
-            .eq('question_id', question.id);
+          const dummyAnswers: Answer[] = [];
           
-          if (answersError) throw answersError;
+          if (question.options) {
+            const options = question.options as any[];
+            const correctAnswers = question.correct_answers as any[];
+            
+            options.forEach((option, index) => {
+              dummyAnswers.push({
+                id: option.id || index.toString(),
+                question_id: question.id,
+                answer_text: option.text,
+                is_correct: correctAnswers ? correctAnswers.includes(option.id || index.toString()) : false,
+                created_at: question.created_at
+              });
+            });
+          }
+          
+          if (question.question_type === QuestionType.TEXT_INPUT && question.correct_answers) {
+            const textAnswers = question.correct_answers as string[];
+            if (textAnswers.length > 0) {
+              dummyAnswers.push({
+                id: '0',
+                question_id: question.id,
+                answer_text: textAnswers[0],
+                is_correct: true,
+                created_at: question.created_at
+              });
+            }
+          }
           
           questionsWithAnswers.push({
             ...questionWithText,
-            answers: answersData || []
+            answers: dummyAnswers
           });
         }
         
@@ -199,7 +220,6 @@ const EditQuiz = () => {
   };
 
   const handleQuestionAdded = (newQuestion: QuestionWithAnswers) => {
-    // Make sure to map content to text for UI consistency
     const questionWithText = {
       ...newQuestion,
       text: newQuestion.content

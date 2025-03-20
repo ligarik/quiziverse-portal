@@ -18,6 +18,14 @@ export type User = {
   created_at?: string;
 };
 
+// Update the QuestionType enum to match the database schema
+export enum QuestionType {
+  SINGLE_CHOICE = 'single_choice',
+  MULTIPLE_CHOICE = 'multiple_choice',
+  TEXT_INPUT = 'text',
+  TRUE_FALSE = 'true_false'
+}
+
 export type Quiz = {
   id: string;
   title: string;
@@ -31,15 +39,6 @@ export type Quiz = {
   show_feedback?: boolean;
 };
 
-export enum QuestionType {
-  SINGLE_CHOICE = 'single_choice',
-  MULTIPLE_CHOICE = 'multiple_choice',
-  TRUE_FALSE = 'true_false',
-  NUMBER_INPUT = 'number_input',
-  TEXT_INPUT = 'text_input',
-  MATCHING = 'matching'
-}
-
 export type Question = {
   id: string;
   quiz_id: string;
@@ -49,6 +48,7 @@ export type Question = {
   question_type: QuestionType;
   points?: number;
   image_url?: string;
+  position: number; // Required by the database schema
 };
 
 export type Answer = {
@@ -67,15 +67,16 @@ export type QuizAttempt = {
   score: number;
   max_score: number;
   created_at: string;
+  started_at: string;
   completed_at: string | null;
+  is_graded: boolean;
 };
 
 export type QuestionResponse = {
   id: string;
   attempt_id: string;
   question_id: string;
-  answer_id: string | null;
   is_correct: boolean;
   created_at: string;
-  user_answer_text?: string;
+  user_answer?: string;
 };

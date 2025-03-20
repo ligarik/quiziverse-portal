@@ -29,10 +29,6 @@ const QuestionItem = ({ question, index, onDelete }: QuestionItemProps) => {
         return 'Верно/Неверно';
       case QuestionType.TEXT_INPUT:
         return 'Ввод текста';
-      case QuestionType.NUMBER_INPUT:
-        return 'Ввод числа';
-      case QuestionType.MATCHING:
-        return 'Соответствие';
       default:
         return 'Неизвестный тип';
     }

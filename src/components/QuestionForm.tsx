@@ -1,20 +1,13 @@
-
 import { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Check, Loader2, Image as ImageIcon, X, Upload } from 'lucide-react';
+import { Check, Loader2, Image as ImageIcon, X } from 'lucide-react';
 import { QuestionType, supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/components/ui/use-toast';
-import { 
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Json } from '@/integrations/supabase/types';
 
 interface AnswerInput {
   text: string;
@@ -37,7 +30,6 @@ const QuestionForm = ({ quizId, onQuestionAdded, onCancel }: QuestionFormProps) 
     { text: '', isCorrect: false },
     { text: '', isCorrect: false }
   ]);
-  const [correctAnswer, setCorrectAnswer] = useState(''); // For text/number input
   const [isLoading, setIsLoading] = useState(false);
   const [points, setPoints] = useState(1); // Default points per question
   const [image, setImage] = useState<File | null>(null);
@@ -81,7 +73,7 @@ const QuestionForm = ({ quizId, onQuestionAdded, onCancel }: QuestionFormProps) 
         { text: 'Верно', isCorrect: true },
         { text: 'Неверно', isCorrect: false }
       ]);
-    } else if (value === QuestionType.TEXT_INPUT || value === QuestionType.NUMBER_INPUT) {
+    } else if (value === QuestionType.TEXT_INPUT) {
       setAnswers([{ text: 'Ответ', isCorrect: true }]);
     } else if (value === QuestionType.MATCHING) {
       setAnswers([
@@ -243,7 +235,7 @@ const QuestionForm = ({ quizId, onQuestionAdded, onCancel }: QuestionFormProps) 
         });
         return;
       }
-    } else if (questionType === QuestionType.TEXT_INPUT || questionType === QuestionType.NUMBER_INPUT) {
+    } else if (questionType === QuestionType.TEXT_INPUT) {
       if (!answers[0].text.trim()) {
         toast({
           title: 'Ошибка',
@@ -263,15 +255,56 @@ const QuestionForm = ({ quizId, onQuestionAdded, onCancel }: QuestionFormProps) 
         imageUrl = await uploadImage();
       }
       
+      // Get the highest position number to add this question at the end
+      const { data: existingQuestions, error: positionError } = await supabase
+        .from('questions')
+        .select('position')
+        .eq('quiz_id', quizId)
+        .order('position', { ascending: false })
+        .limit(1);
+      
+      if (positionError) throw positionError;
+      
+      const position = (existingQuestions && existingQuestions.length > 0) 
+        ? existingQuestions[0].position + 1 
+        : 1;
+      
+      // Prepare correct answers based on question type
+      let correctAnswers: any = null;
+      let options: any = null;
+      
+      if (questionType === QuestionType.SINGLE_CHOICE || questionType === QuestionType.MULTIPLE_CHOICE) {
+        options = answers.map((a, index) => ({
+          id: index.toString(),
+          text: a.text
+        }));
+        
+        correctAnswers = answers
+          .filter(a => a.isCorrect)
+          .map((_, index) => index.toString());
+      } else if (questionType === QuestionType.TRUE_FALSE) {
+        options = [
+          { id: "0", text: "Верно" },
+          { id: "1", text: "Неверно" }
+        ];
+        correctAnswers = answers[0].isCorrect ? ["0"] : ["1"];
+      } else if (questionType === QuestionType.TEXT_INPUT) {
+        correctAnswers = [answers[0].text];
+      }
+      
       // Insert question
       const { data: questionData, error: questionError } = await supabase
         .from('questions')
         .insert({
           quiz_id: quizId,
-          content: questionText, // Use content instead of text for db
+          content: questionText,
           question_type: questionType,
           points: points,
-          image_url: imageUrl
+          image_url: imageUrl,
+          position: position,
+          options: options,
+          correct_answers: correctAnswers,
+          grading_method: 'automatic'
         })
         .select('id')
         .single();
@@ -281,41 +314,7 @@ const QuestionForm = ({ quizId, onQuestionAdded, onCancel }: QuestionFormProps) 
         throw questionError;
       }
       
-      // Prepare answers based on question type
-      let answersToInsert = [];
-      
-      if (questionType === QuestionType.SINGLE_CHOICE || questionType === QuestionType.MULTIPLE_CHOICE || 
-          questionType === QuestionType.TRUE_FALSE) {
-        const validAnswers = answers.filter(a => a.text.trim() !== '');
-        answersToInsert = validAnswers.map(answer => ({
-          question_id: questionData.id,
-          answer_text: answer.text,
-          is_correct: answer.isCorrect
-        }));
-      } else if (questionType === QuestionType.TEXT_INPUT || questionType === QuestionType.NUMBER_INPUT) {
-        answersToInsert = [{
-          question_id: questionData.id,
-          answer_text: answers[0].text,
-          is_correct: true
-        }];
-      } else if (questionType === QuestionType.MATCHING) {
-        answersToInsert = answers.filter(a => a.text.trim() !== '' && a.matchingText && a.matchingText.trim() !== '')
-          .map(answer => ({
-            question_id: questionData.id,
-            answer_text: answer.text,
-            matching_text: answer.matchingText,
-            is_correct: true
-          }));
-      }
-      
-      // Insert answers
-      const { data: answersData, error: answersError } = await supabase
-        .from('answers')
-        .insert(answersToInsert)
-        .select('*');
-      
-      if (answersError) throw answersError;
-      
+      // Create a new question object with UI-friendly structure
       const newQuestion = {
         id: questionData.id,
         quiz_id: quizId,
@@ -325,7 +324,8 @@ const QuestionForm = ({ quizId, onQuestionAdded, onCancel }: QuestionFormProps) 
         created_at: new Date().toISOString(),
         points: points,
         image_url: imageUrl,
-        answers: answersData || []
+        position: position,
+        answers: []
       };
       
       onQuestionAdded(newQuestion);
@@ -370,14 +370,6 @@ const QuestionForm = ({ quizId, onQuestionAdded, onCancel }: QuestionFormProps) 
           <div className="flex items-center space-x-2">
             <RadioGroupItem value={QuestionType.TEXT_INPUT} id="text_input" />
             <Label htmlFor="text_input">Ввод текста</Label>
-          </div>
-          <div className="flex items-center space-x-2">
-            <RadioGroupItem value={QuestionType.NUMBER_INPUT} id="number_input" />
-            <Label htmlFor="number_input">Ввод числа</Label>
-          </div>
-          <div className="flex items-center space-x-2">
-            <RadioGroupItem value={QuestionType.MATCHING} id="matching" />
-            <Label htmlFor="matching">Соответствие</Label>
           </div>
         </RadioGroup>
       </div>
@@ -453,7 +445,6 @@ const QuestionForm = ({ quizId, onQuestionAdded, onCancel }: QuestionFormProps) 
           <Label>
             {questionType === QuestionType.MATCHING ? 'Элементы для сопоставления' :
              questionType === QuestionType.TEXT_INPUT ? 'Правильный ответ (текст)' :
-             questionType === QuestionType.NUMBER_INPUT ? 'Правильный ответ (число)' :
              'Варианты ответов'}
           </Label>
           {(questionType === QuestionType.SINGLE_CHOICE || 
@@ -507,14 +498,14 @@ const QuestionForm = ({ quizId, onQuestionAdded, onCancel }: QuestionFormProps) 
                 </div>
               </div>
             ))
-          ) : questionType === QuestionType.TEXT_INPUT || questionType === QuestionType.NUMBER_INPUT ? (
+          ) : questionType === QuestionType.TEXT_INPUT ? (
             // Text/Number input UI
             <div className="flex items-center gap-2">
               <div className="flex-grow">
                 <Input
-                  placeholder={questionType === QuestionType.NUMBER_INPUT ? "Введите числовой ответ" : "Введите текстовый ответ"}
+                  placeholder="Введите текстовый ответ"
                   value={answers[0].text}
-                  type={questionType === QuestionType.NUMBER_INPUT ? "number" : "text"}
+                  type="text"
                   onChange={(e) => handleAnswerChange(0, e.target.value)}
                 />
               </div>

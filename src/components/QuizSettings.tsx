@@ -10,14 +10,7 @@ import {
   CardTitle,
   CardDescription,
 } from '@/components/ui/card';
-import { 
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue, 
-} from '@/components/ui/select';
-import { Clock, Shuffle, MessageCircle, Scale } from 'lucide-react';
+import { Clock, Shuffle, MessageCircle } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { Quiz, supabase } from '@/integrations/supabase/client';
 
