@@ -311,7 +311,7 @@ const QuestionForm = ({ quizId, onQuestionAdded, onCancel }: QuestionFormProps) 
       }
       
       // Convert our enum to the database string value
-      const dbQuestionType = questionType.toString();
+      const dbQuestionType = questionType as string;
       
       // Insert question
       const { data: questionData, error: questionError } = await supabase
@@ -499,7 +499,6 @@ const QuestionForm = ({ quizId, onQuestionAdded, onCancel }: QuestionFormProps) 
         
         <div className="space-y-3">
           {questionType === QuestionType.TEXT_INPUT ? (
-            // Text input UI
             <div className="flex items-center gap-2">
               <div className="flex-grow">
                 <Input
@@ -511,7 +510,6 @@ const QuestionForm = ({ quizId, onQuestionAdded, onCancel }: QuestionFormProps) 
               </div>
             </div>
           ) : questionType === QuestionType.NUMBER_INPUT ? (
-            // Number input UI
             <div className="flex items-center gap-2">
               <div className="flex-grow">
                 <Input
@@ -523,7 +521,6 @@ const QuestionForm = ({ quizId, onQuestionAdded, onCancel }: QuestionFormProps) 
               </div>
             </div>
           ) : questionType === QuestionType.MATCHING ? (
-            // Matching items UI
             answers.map((answer, index) => (
               <div key={index} className="grid grid-cols-1 sm:grid-cols-2 gap-2 p-2 border rounded-md">
                 <div className="flex items-center gap-2">
@@ -557,7 +554,6 @@ const QuestionForm = ({ quizId, onQuestionAdded, onCancel }: QuestionFormProps) 
               </div>
             ))
           ) : (
-            // Single/Multiple choice UI
             answers.map((answer, index) => (
               <div key={index} className="flex items-center gap-2">
                 <div className="flex-grow">
