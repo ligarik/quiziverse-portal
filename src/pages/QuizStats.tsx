@@ -1,8 +1,15 @@
+
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
-import { supabase, Question, QuestionType } from '@/integrations/supabase/client';
+import { supabase, Question, QuestionType, Quiz } from '@/integrations/supabase/client';
 import { Json } from '@/integrations/supabase/types';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Loader2, ArrowLeft } from 'lucide-react';
+import Navbar from '@/components/Navbar';
+import Footer from '@/components/Footer';
+import { useToast } from '@/components/ui/use-toast';
 
 interface AttemptWithUser {
   id: string;
@@ -14,7 +21,6 @@ interface AttemptWithUser {
   started_at: string;
   completed_at: string | null;
   is_graded: boolean;
-  created_at: string;
 }
 
 const QuizStats = () => {
@@ -53,8 +59,7 @@ const QuizStats = () => {
           max_score: attempt.max_score || 0,
           started_at: attempt.started_at,
           completed_at: attempt.completed_at,
-          is_graded: attempt.is_graded,
-          created_at: attempt.started_at
+          is_graded: attempt.is_graded
         }));
         
         setAttempts(formattedAttempts);

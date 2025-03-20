@@ -5,8 +5,6 @@ import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Loader2 } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
@@ -26,7 +24,7 @@ const BrowseQuizzes = () => {
     const fetchQuizzes = async () => {
       setIsLoading(true);
       try {
-        // Create the query with explicit typing
+        // Create the query
         let query = supabase
           .from('quizzes')
           .select('*')
@@ -117,7 +115,7 @@ const BrowseQuizzes = () => {
                     <Button
                       variant="secondary"
                       className="mt-4 w-full"
-                      onClick={() => navigate(`/quiz/${quiz.id}`)}
+                      onClick={() => navigate(`/quiz/take/${quiz.id}`)}
                     >
                       Начать тест
                     </Button>
