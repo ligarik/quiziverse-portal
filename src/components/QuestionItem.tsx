@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Trash2, ChevronDown, ChevronUp, Image as ImageIcon } from 'lucide-react';
@@ -29,6 +30,8 @@ const QuestionItem = ({ question, index, onDelete }: QuestionItemProps) => {
         return 'Верно/Неверно';
       case QuestionType.TEXT_INPUT:
         return 'Ввод текста';
+      case QuestionType.MATCHING:
+        return 'Сопоставление';
       default:
         return 'Неизвестный тип';
     }
@@ -92,7 +95,7 @@ const QuestionItem = ({ question, index, onDelete }: QuestionItemProps) => {
           {question.question_type === QuestionType.MATCHING ? (
             <div className="space-y-1">
               <div className="grid grid-cols-2 gap-4 mb-2">
-                <div className="font-medium text-sm">Эле��ент</div>
+                <div className="font-medium text-sm">Элемент</div>
                 <div className="font-medium text-sm">Соответствие</div>
               </div>
               {question.answers.map((answer, aIndex) => (
@@ -102,7 +105,7 @@ const QuestionItem = ({ question, index, onDelete }: QuestionItemProps) => {
                 </div>
               ))}
             </div>
-          ) : question.question_type === QuestionType.TEXT_INPUT || question.question_type === QuestionType.NUMBER_INPUT ? (
+          ) : question.question_type === QuestionType.TEXT_INPUT ? (
             <div className="p-2 rounded-md bg-primary/10 border border-primary/30">
               <p className="text-sm text-primary font-medium">
                 Правильный ответ: {question.answers[0]?.answer_text}

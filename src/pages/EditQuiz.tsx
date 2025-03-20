@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
@@ -34,6 +35,7 @@ import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase, Quiz, Question, Answer, QuestionType } from '@/integrations/supabase/client';
+import { Json } from '@/integrations/supabase/types';
 import QuestionForm from '@/components/QuestionForm';
 import QuestionItem from '@/components/QuestionItem';
 import QuizSettings from '@/components/QuizSettings';
@@ -110,9 +112,18 @@ const EditQuiz = () => {
         const questionsWithAnswers: QuestionWithAnswers[] = [];
         
         for (const question of questionsData || []) {
+          // Convert database type to enum type
+          const questionType = question.question_type as string;
+          const enumQuestionType = questionType === 'single_choice' ? QuestionType.SINGLE_CHOICE :
+                                  questionType === 'multiple_choice' ? QuestionType.MULTIPLE_CHOICE :
+                                  questionType === 'text' ? QuestionType.TEXT_INPUT :
+                                  questionType === 'true_false' ? QuestionType.TRUE_FALSE :
+                                  QuestionType.SINGLE_CHOICE;
+          
           const questionWithText = {
             ...question,
-            text: question.content
+            text: question.content,
+            question_type: enumQuestionType
           };
           
           const dummyAnswers: Answer[] = [];
@@ -132,7 +143,7 @@ const EditQuiz = () => {
             });
           }
           
-          if (question.question_type === QuestionType.TEXT_INPUT && question.correct_answers) {
+          if (questionType === 'text' && question.correct_answers) {
             const textAnswers = question.correct_answers as string[];
             if (textAnswers.length > 0) {
               dummyAnswers.push({
@@ -148,7 +159,7 @@ const EditQuiz = () => {
           questionsWithAnswers.push({
             ...questionWithText,
             answers: dummyAnswers
-          });
+          } as QuestionWithAnswers);
         }
         
         setQuiz(quizWithDefaults);

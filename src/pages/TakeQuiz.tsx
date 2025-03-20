@@ -15,8 +15,7 @@ import { Loader2, ArrowLeft, ArrowRight, CheckCircle2 } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import { useToast } from '@/components/ui/use-toast';
-import { supabase } from '@/lib/supabase';
-import { Quiz, Question, Answer } from '@/lib/supabase';
+import { supabase, Quiz, Question, Answer } from '@/integrations/supabase/client';
 
 interface QuestionWithAnswers extends Question {
   answers: Answer[];
@@ -83,6 +82,8 @@ const TakeQuiz = () => {
           
           questionsWithAnswers.push({
             ...question,
+            text: question.content,
+            question_type: question.question_type,
             answers: answersData || []
           });
         }

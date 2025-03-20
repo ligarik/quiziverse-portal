@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
@@ -41,7 +40,7 @@ import {
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import { useToast } from '@/components/ui/use-toast';
-import { supabase, Quiz } from '@/lib/supabase';
+import { supabase } from '@/integrations/supabase/client';
 
 const Dashboard = () => {
   const [quizzes, setQuizzes] = useState<Quiz[]>([]);
@@ -62,15 +61,14 @@ const Dashboard = () => {
         const { data, error } = await supabase
           .from('quizzes')
           .select('*')
-          .eq('created_by', user.id) // Changed from user_id to created_by
+          .eq('created_by', user.id)
           .order('created_at', { ascending: false });
         
         if (error) throw error;
         
-        // Ensure all quizzes have is_published property
         const quizzesWithPublishState = (data || []).map(quiz => ({
           ...quiz,
-          is_published: quiz.is_published || false // Default to false if not set
+          is_published: quiz.is_published || false
         }));
         
         setQuizzes(quizzesWithPublishState);
@@ -99,7 +97,6 @@ const Dashboard = () => {
     try {
       setIsDeletingId(quizId);
       
-      // Получаем все вопросы для этого теста
       const { data: questions, error: questionsError } = await supabase
         .from('questions')
         .select('id')
@@ -107,7 +104,6 @@ const Dashboard = () => {
       
       if (questionsError) throw questionsError;
       
-      // Удаляем все ответы для каждого вопроса
       for (const question of questions || []) {
         await supabase
           .from('answers')
@@ -115,13 +111,11 @@ const Dashboard = () => {
           .eq('question_id', question.id);
       }
       
-      // Удаляем все вопросы
       await supabase
         .from('questions')
         .delete()
         .eq('quiz_id', quizId);
       
-      // Удаляем результаты попыток
       const { data: attempts, error: attemptsError } = await supabase
         .from('quiz_attempts')
         .select('id')
@@ -141,16 +135,14 @@ const Dashboard = () => {
         .delete()
         .eq('quiz_id', quizId);
       
-      // Наконец, удаляем сам тест
       const { error } = await supabase
         .from('quizzes')
         .delete()
         .eq('id', quizId)
-        .eq('created_by', user.id); // Changed from user_id to created_by
+        .eq('created_by', user.id);
       
       if (error) throw error;
       
-      // Обновляем список тестов
       setQuizzes(quizzes.filter(quiz => quiz.id !== quizId));
       
       toast({

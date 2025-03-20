@@ -75,12 +75,6 @@ const QuestionForm = ({ quizId, onQuestionAdded, onCancel }: QuestionFormProps) 
       ]);
     } else if (value === QuestionType.TEXT_INPUT) {
       setAnswers([{ text: 'Ответ', isCorrect: true }]);
-    } else if (value === QuestionType.MATCHING) {
-      setAnswers([
-        { text: 'Элемент 1', isCorrect: true, matchingText: 'Соответствие 1' },
-        { text: 'Элемент 2', isCorrect: true, matchingText: 'Соответствие 2' },
-        { text: 'Элемент 3', isCorrect: true, matchingText: 'Соответствие 3' },
-      ]);
     } else if (answers.length < 2) {
       setAnswers([
         { text: '', isCorrect: true },
@@ -93,11 +87,7 @@ const QuestionForm = ({ quizId, onQuestionAdded, onCancel }: QuestionFormProps) 
 
   const addAnswer = () => {
     if (answers.length < 8) {
-      if (questionType === QuestionType.MATCHING) {
-        setAnswers([...answers, { text: '', isCorrect: true, matchingText: '' }]);
-      } else {
-        setAnswers([...answers, { text: '', isCorrect: false }]);
-      }
+      setAnswers([...answers, { text: '', isCorrect: false }]);
     } else {
       toast({
         title: 'Максимальное количество ответов',
@@ -117,10 +107,6 @@ const QuestionForm = ({ quizId, onQuestionAdded, onCancel }: QuestionFormProps) 
         newAnswers[0].isCorrect = true;
       }
       
-      setAnswers(newAnswers);
-    } else if (questionType === QuestionType.MATCHING && answers.length > 2) {
-      const newAnswers = [...answers];
-      newAnswers.splice(index, 1);
       setAnswers(newAnswers);
     } else {
       toast({
@@ -224,17 +210,6 @@ const QuestionForm = ({ quizId, onQuestionAdded, onCancel }: QuestionFormProps) 
         });
         return;
       }
-    } else if (questionType === QuestionType.MATCHING) {
-      const validAnswers = answers.filter(a => a.text.trim() !== '' && a.matchingText && a.matchingText.trim() !== '');
-      
-      if (validAnswers.length < 2) {
-        toast({
-          title: 'Ошибка',
-          description: 'Добавьте как минимум два элемента для сопоставления',
-          variant: 'destructive',
-        });
-        return;
-      }
     } else if (questionType === QuestionType.TEXT_INPUT) {
       if (!answers[0].text.trim()) {
         toast({
@@ -292,13 +267,20 @@ const QuestionForm = ({ quizId, onQuestionAdded, onCancel }: QuestionFormProps) 
         correctAnswers = [answers[0].text];
       }
       
+      // Convert our enum to the database string value
+      const dbQuestionType = questionType === QuestionType.SINGLE_CHOICE ? 'single_choice' :
+                           questionType === QuestionType.MULTIPLE_CHOICE ? 'multiple_choice' :
+                           questionType === QuestionType.TEXT_INPUT ? 'text' :
+                           questionType === QuestionType.TRUE_FALSE ? 'true_false' :
+                           'single_choice';
+      
       // Insert question
       const { data: questionData, error: questionError } = await supabase
         .from('questions')
         .insert({
           quiz_id: quizId,
           content: questionText,
-          question_type: questionType,
+          question_type: dbQuestionType,
           points: points,
           image_url: imageUrl,
           position: position,
@@ -374,6 +356,8 @@ const QuestionForm = ({ quizId, onQuestionAdded, onCancel }: QuestionFormProps) 
         </RadioGroup>
       </div>
       
+      
+      
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div className="md:col-span-3 space-y-2">
           <Label htmlFor="questionText">Текст вопроса</Label>
@@ -443,62 +427,23 @@ const QuestionForm = ({ quizId, onQuestionAdded, onCancel }: QuestionFormProps) 
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <Label>
-            {questionType === QuestionType.MATCHING ? 'Элементы для сопоставления' :
-             questionType === QuestionType.TEXT_INPUT ? 'Правильный ответ (текст)' :
-             'Варианты ответов'}
+            {questionType === QuestionType.TEXT_INPUT ? 'Правильный ответ (текст)' : 'Варианты ответов'}
           </Label>
           {(questionType === QuestionType.SINGLE_CHOICE || 
-            questionType === QuestionType.MULTIPLE_CHOICE || 
-            questionType === QuestionType.MATCHING) && (
+            questionType === QuestionType.MULTIPLE_CHOICE) && (
             <Button 
               type="button" 
               variant="outline" 
               size="sm" 
               onClick={addAnswer}
             >
-              {questionType === QuestionType.MATCHING ? 'Добавить элемент' : 'Добавить вариант'}
+              Добавить вариант
             </Button>
           )}
         </div>
         
         <div className="space-y-3">
-          {questionType === QuestionType.MATCHING ? (
-            // Matching question UI
-            answers.map((answer, index) => (
-              <div key={index} className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                <div className="flex items-center gap-2">
-                  <div className="flex-grow">
-                    <Input
-                      placeholder={`Элемент ${index + 1}`}
-                      value={answer.text}
-                      onChange={(e) => handleAnswerChange(index, e.target.value)}
-                    />
-                  </div>
-                </div>
-                
-                <div className="flex items-center gap-2">
-                  <div className="flex-grow">
-                    <Input
-                      placeholder={`Соответствие ${index + 1}`}
-                      value={answer.matchingText || ''}
-                      onChange={(e) => handleMatchingChange(index, e.target.value)}
-                    />
-                  </div>
-                  
-                  {answers.length > 2 && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => removeAnswer(index)}
-                    >
-                      Удалить
-                    </Button>
-                  )}
-                </div>
-              </div>
-            ))
-          ) : questionType === QuestionType.TEXT_INPUT ? (
+          {questionType === QuestionType.TEXT_INPUT ? (
             // Text/Number input UI
             <div className="flex items-center gap-2">
               <div className="flex-grow">

@@ -18,12 +18,14 @@ export type User = {
   created_at?: string;
 };
 
-// Update the QuestionType enum to match the database schema
+// Update the QuestionType enum to include all question types used in the app
 export enum QuestionType {
   SINGLE_CHOICE = 'single_choice',
   MULTIPLE_CHOICE = 'multiple_choice',
   TEXT_INPUT = 'text',
-  TRUE_FALSE = 'true_false'
+  TRUE_FALSE = 'true_false',
+  MATCHING = 'matching',
+  NUMBER_INPUT = 'number'
 }
 
 export type Quiz = {
