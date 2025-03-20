@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
@@ -41,10 +40,7 @@ const QuizStats = () => {
         
         const { data: attemptsData, error: attemptsError } = await supabase
           .from('quiz_attempts')
-          .select(`
-            *,
-            users:user_id(email)
-          `)
+          .select('*')
           .eq('quiz_id', id)
           .not('completed_at', 'is', null);
         
@@ -54,7 +50,7 @@ const QuizStats = () => {
           id: attempt.id,
           quiz_id: attempt.quiz_id,
           user_id: attempt.user_id,
-          user_email: attempt.users?.email || 'Unknown',
+          user_email: 'Unknown User',
           score: attempt.score || 0,
           max_score: attempt.max_score || 0,
           started_at: attempt.started_at,

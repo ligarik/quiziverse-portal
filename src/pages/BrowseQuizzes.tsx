@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
@@ -24,18 +23,11 @@ const BrowseQuizzes = () => {
     const fetchQuizzes = async () => {
       setIsLoading(true);
       try {
-        // Create the query
-        let query = supabase
+        // Create a basic query to avoid type instantiation issues
+        const { data, error } = await supabase
           .from('quizzes')
-          .select('*')
+          .select('id, title, description, created_at, created_by, is_public, is_published, time_limit, randomize_questions, show_feedback')
           .eq('is_public', true);
-
-        if (category !== 'all') {
-          // Assuming you have a category column in your quizzes table
-          query = query.eq('category', category);
-        }
-
-        const { data, error } = await query;
 
         if (error) {
           throw error;
