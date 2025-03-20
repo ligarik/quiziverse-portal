@@ -99,7 +99,7 @@ const QuestionForm = ({ quizId, onQuestionAdded, onCancel }: QuestionFormProps) 
       }
     } else {
       toast({
-        title: 'Максимальное количество ответов',
+        title: 'Максимальное количество от��етов',
         description: 'Нельзя добавить больше 8 вариантов ответа',
         variant: 'destructive',
       });
@@ -226,7 +226,7 @@ const QuestionForm = ({ quizId, onQuestionAdded, onCancel }: QuestionFormProps) 
     } else if (questionType === QuestionType.TEXT_INPUT) {
       if (!answers[0].text.trim()) {
         toast({
-          title: 'Ошибка',
+          title: 'О��ибка',
           description: 'Укажите правильный ответ',
           variant: 'destructive',
         });
@@ -310,8 +310,31 @@ const QuestionForm = ({ quizId, onQuestionAdded, onCancel }: QuestionFormProps) 
         correctAnswers = answers.map((_, index) => index.toString());
       }
       
-      // Convert our enum to the database string value
-      const dbQuestionType = questionType as string;
+      // Map our enum values to the database string literals
+      let dbQuestionType: "number" | "single_choice" | "multiple_choice" | "text" | "true_false" | "matching";
+      
+      switch (questionType) {
+        case QuestionType.SINGLE_CHOICE:
+          dbQuestionType = "single_choice";
+          break;
+        case QuestionType.MULTIPLE_CHOICE:
+          dbQuestionType = "multiple_choice";
+          break;
+        case QuestionType.TEXT_INPUT:
+          dbQuestionType = "text";
+          break;
+        case QuestionType.TRUE_FALSE:
+          dbQuestionType = "true_false";
+          break;
+        case QuestionType.NUMBER_INPUT:
+          dbQuestionType = "number";
+          break;
+        case QuestionType.MATCHING:
+          dbQuestionType = "matching";
+          break;
+        default:
+          dbQuestionType = "single_choice"; // Default fallback
+      }
       
       // Insert question
       const { data: questionData, error: questionError } = await supabase
