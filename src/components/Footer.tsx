@@ -56,22 +56,12 @@ const Footer = () => {
             </div>
             
             <div className="space-y-4">
-              <h4 className="font-medium text-foreground">Связь</h4>
+              <h4 className="font-medium text-foreground">Информация</h4>
               <ul className="space-y-2">
                 <li>
-                  <a href="#" className="text-muted-foreground hover:text-primary text-sm transition-colors">
+                  <Link to="/about" className="text-muted-foreground hover:text-primary text-sm transition-colors">
                     О нас
-                  </a>
-                </li>
-                <li>
-                  <a href="#" className="text-muted-foreground hover:text-primary text-sm transition-colors">
-                    Поддержка
-                  </a>
-                </li>
-                <li>
-                  <a href="#" className="text-muted-foreground hover:text-primary text-sm transition-colors">
-                    Контакты
-                  </a>
+                  </Link>
                 </li>
               </ul>
             </div>
@@ -84,12 +74,12 @@ const Footer = () => {
           </p>
           
           <div className="mt-4 md:mt-0 flex space-x-6">
-            <a href="#" className="text-muted-foreground hover:text-primary text-sm transition-colors">
+            <Link to="/terms" className="text-muted-foreground hover:text-primary text-sm transition-colors">
               Условия использования
-            </a>
-            <a href="#" className="text-muted-foreground hover:text-primary text-sm transition-colors">
+            </Link>
+            <Link to="/privacy" className="text-muted-foreground hover:text-primary text-sm transition-colors">
               Политика конфиденциальности
-            </a>
+            </Link>
           </div>
         </div>
       </div>
