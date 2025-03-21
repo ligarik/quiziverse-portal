@@ -39,6 +39,17 @@ export type Quiz = {
   time_limit?: number;
   randomize_questions?: boolean;
   show_feedback?: boolean;
+  
+  // New properties
+  show_question_numbers?: boolean;
+  show_progress_bar?: boolean;
+  randomize_answers?: boolean;
+  question_limit?: number;
+  show_elapsed_time?: boolean;
+  prevent_copy?: boolean;
+  prevent_back_button?: boolean;
+  confirm_last_next?: boolean;
+  confirm_finish?: boolean;
 };
 
 export type Question = {
