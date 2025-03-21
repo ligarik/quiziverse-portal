@@ -25,6 +25,7 @@ import {
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import GradeTextAnswers from '@/components/GradeTextAnswers';
+import QuizResultsAnalytics from '@/components/QuizResultsAnalytics';
 import { 
   supabase, 
   Quiz, 
@@ -58,6 +59,7 @@ const QuizStats = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [selectedAttemptId, setSelectedAttemptId] = useState<string | null>(null);
   const [openAttempts, setOpenAttempts] = useState<string[]>([]);
+  const [viewMode, setViewMode] = useState<'list' | 'analytics'>('list');
   
   useEffect(() => {
     const fetchQuizData = async () => {
@@ -268,100 +270,127 @@ const QuizStats = () => {
               />
             </div>
           ) : (
-            <Card>
-              <CardHeader>
-                <CardTitle>{quiz?.title}</CardTitle>
-                <CardDescription className="text-base">
-                  {quiz?.description}
-                </CardDescription>
-                <CardDescription className="mt-2">
-                  Всего вопросов: {questions.length}
-                </CardDescription>
-              </CardHeader>
-              
-              <CardContent>
-                <h3 className="text-lg font-semibold mb-4">Статистика попыток</h3>
+            <>
+              <Card>
+                <CardHeader>
+                  <CardTitle>{quiz?.title}</CardTitle>
+                  <CardDescription className="text-base">
+                    {quiz?.description}
+                  </CardDescription>
+                  <CardDescription className="mt-2">
+                    Всего вопросов: {questions.length}
+                  </CardDescription>
+                </CardHeader>
                 
-                {attempts.length === 0 ? (
-                  <p className="text-muted-foreground">Пока никто не проходил этот тест</p>
-                ) : (
-                  <div className="space-y-4">
-                    {attempts.map((attempt) => {
-                      const hasTextQuestions = questions.some(q => q.question_type === QuestionType.TEXT_INPUT);
-                      const needsGrading = hasTextQuestions && !attempt.is_graded;
-                      const isOpen = openAttempts.includes(attempt.id);
-                      const hasCustomFields = attempt.custom_fields && attempt.custom_fields.length > 0;
-                      
-                      return (
-                        <Collapsible
-                          key={attempt.id}
-                          open={isOpen}
-                          onOpenChange={() => toggleAttemptDetails(attempt.id)}
-                          className="border rounded-md overflow-hidden"
-                        >
-                          <div className="p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                            <div className="flex-1">
-                              <CollapsibleTrigger className="flex items-center gap-2 font-medium hover:underline cursor-pointer w-full text-left">
-                                {attempt.user_id === user?.id ? 'Вы' : `Пользователь ${attempt.user_id.substring(0, 6)}`}
-                                {hasCustomFields && (
-                                  <ChevronDown className={`h-4 w-4 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
-                                )}
-                              </CollapsibleTrigger>
-                              <div className="text-sm text-muted-foreground mt-1">
-                                Дата: {new Date(attempt.completed_at || attempt.started_at).toLocaleString()}
+                <CardContent>
+                  <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-lg font-semibold">Статистика попыток</h3>
+                    <div className="flex gap-2">
+                      <Button 
+                        variant={viewMode === 'list' ? 'default' : 'outline'} 
+                        size="sm"
+                        onClick={() => setViewMode('list')}
+                      >
+                        Список
+                      </Button>
+                      <Button 
+                        variant={viewMode === 'analytics' ? 'default' : 'outline'} 
+                        size="sm"
+                        onClick={() => setViewMode('analytics')}
+                        disabled={attempts.length === 0}
+                      >
+                        Аналитика
+                      </Button>
+                    </div>
+                  </div>
+                  
+                  {attempts.length === 0 ? (
+                    <p className="text-muted-foreground">Пока никто не проходил этот тест</p>
+                  ) : viewMode === 'list' ? (
+                    <div className="space-y-4">
+                      {attempts.map((attempt) => {
+                        const hasTextQuestions = questions.some(q => q.question_type === QuestionType.TEXT_INPUT);
+                        const needsGrading = hasTextQuestions && !attempt.is_graded;
+                        const isOpen = openAttempts.includes(attempt.id);
+                        const hasCustomFields = attempt.custom_fields && attempt.custom_fields.length > 0;
+                        
+                        return (
+                          <Collapsible
+                            key={attempt.id}
+                            open={isOpen}
+                            onOpenChange={() => toggleAttemptDetails(attempt.id)}
+                            className="border rounded-md overflow-hidden"
+                          >
+                            <div className="p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                              <div className="flex-1">
+                                <CollapsibleTrigger className="flex items-center gap-2 font-medium hover:underline cursor-pointer w-full text-left">
+                                  {attempt.user_id === user?.id ? 'Вы' : `Пользователь ${attempt.user_id.substring(0, 6)}`}
+                                  {hasCustomFields && (
+                                    <ChevronDown className={`h-4 w-4 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+                                  )}
+                                </CollapsibleTrigger>
+                                <div className="text-sm text-muted-foreground mt-1">
+                                  Дата: {new Date(attempt.completed_at || attempt.started_at).toLocaleString()}
+                                </div>
+                                <div className="mt-1">
+                                  {attempt.is_graded ? (
+                                    <span className="text-base">
+                                      Результат: {attempt.score} из {attempt.max_score} 
+                                      ({Math.round((attempt.score / attempt.max_score) * 100)}%)
+                                    </span>
+                                  ) : (
+                                    <span className="text-amber-500">
+                                      Ожидает проверки
+                                    </span>
+                                  )}
+                                </div>
                               </div>
-                              <div className="mt-1">
-                                {attempt.is_graded ? (
-                                  <span className="text-base">
-                                    Результат: {attempt.score} из {attempt.max_score} 
-                                    ({Math.round((attempt.score / attempt.max_score) * 100)}%)
-                                  </span>
-                                ) : (
-                                  <span className="text-amber-500">
-                                    Ожидает проверки
-                                  </span>
-                                )}
-                              </div>
+                              
+                              {needsGrading && user?.id === quiz?.created_by && (
+                                <Button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleGradeAttempt(attempt.id);
+                                  }}
+                                >
+                                  Проверить ответы
+                                </Button>
+                              )}
                             </div>
                             
-                            {needsGrading && user?.id === quiz?.created_by && (
-                              <Button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleGradeAttempt(attempt.id);
-                                }}
-                              >
-                                Проверить ответы
-                              </Button>
-                            )}
-                          </div>
-                          
-                          <CollapsibleContent>
-                            {hasCustomFields ? (
-                              <div className="p-4 border-t bg-muted/40">
-                                <h4 className="text-sm font-medium mb-2">Дополнительная информация:</h4>
-                                <dl className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                  {attempt.custom_fields.map(field => (
-                                    <div key={field.id} className="flex flex-col">
-                                      <dt className="text-xs text-muted-foreground">{field.field_name}:</dt>
-                                      <dd className="font-medium">{field.field_value}</dd>
-                                    </div>
-                                  ))}
-                                </dl>
-                              </div>
-                            ) : (
-                              <div className="p-4 border-t bg-muted/40 text-sm text-muted-foreground">
-                                Дополнительная информация отсутствует
-                              </div>
-                            )}
-                          </CollapsibleContent>
-                        </Collapsible>
-                      );
-                    })}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+                            <CollapsibleContent>
+                              {hasCustomFields ? (
+                                <div className="p-4 border-t bg-muted/40">
+                                  <h4 className="text-sm font-medium mb-2">Дополнительная информация:</h4>
+                                  <dl className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                    {attempt.custom_fields.map(field => (
+                                      <div key={field.id} className="flex flex-col">
+                                        <dt className="text-xs text-muted-foreground">{field.field_name}:</dt>
+                                        <dd className="font-medium">{field.field_value}</dd>
+                                      </div>
+                                    ))}
+                                  </dl>
+                                </div>
+                              ) : (
+                                <div className="p-4 border-t bg-muted/40 text-sm text-muted-foreground">
+                                  Дополнительная информация отсутствует
+                                </div>
+                              )}
+                            </CollapsibleContent>
+                          </Collapsible>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    // Render analytics view
+                    <QuizResultsAnalytics 
+                      attempts={attempts} 
+                      maxScore={attempts.length > 0 ? attempts[0].max_score : 0}
+                    />
+                  )}
+                </CardContent>
+              </Card>
+            </>
           )}
         </div>
       </main>
