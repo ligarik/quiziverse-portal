@@ -7,7 +7,7 @@ const About = () => {
     <div className="min-h-screen flex flex-col">
       <Navbar />
       
-      <main className="flex-grow py-12 px-4 md:px-6">
+      <main className="flex-grow py-12 px-4 md:px-6 mt-16">
         <div className="container mx-auto max-w-3xl">
           <h1 className="text-3xl font-bold mb-6">О нас</h1>
           
@@ -29,6 +29,13 @@ const About = () => {
               QuizCraft предлагает широкий спектр типов вопросов, включая выбор одного или нескольких вариантов, 
               текстовые ответы, числовые ответы и вопросы на соответствие. Вы можете настроить время прохождения теста, 
               параметры отображения результатов и собирать дополнительную информацию об участниках.
+            </p>
+            
+            <h2 className="text-xl font-semibold mt-8 mb-4">Присоединяйтесь к нам</h2>
+            <p className="mb-4">
+              Мы постоянно работаем над улучшением QuizCraft и добавлением новых возможностей. 
+              Наша цель - создать сообщество творческих преподавателей и любознательных учеников, 
+              объединенных стремлением к знаниям и эффективному обучению.
             </p>
             
             <h2 className="text-xl font-semibold mt-8 mb-4">Контакты</h2>

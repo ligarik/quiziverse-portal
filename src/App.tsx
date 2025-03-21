@@ -15,6 +15,9 @@ import CreateQuiz from "./pages/CreateQuiz";
 import EditQuiz from "./pages/EditQuiz";
 import TakeQuiz from "./pages/TakeQuiz";
 import QuizStats from "./pages/QuizStats";
+import Terms from "./pages/Terms";
+import Privacy from "./pages/Privacy";
+import About from "./pages/About";
 
 const queryClient = new QueryClient();
 
@@ -35,6 +38,9 @@ const App = () => (
             <Route path="/quiz/edit/:id" element={<EditQuiz />} />
             <Route path="/quiz/take/:id" element={<TakeQuiz />} />
             <Route path="/quiz/stats/:id" element={<QuizStats />} />
+            <Route path="/terms" element={<Terms />} />
+            <Route path="/privacy" element={<Privacy />} />
+            <Route path="/about" element={<About />} />
             {/* Redirect old paths to new ones */}
             <Route path="/editor/:id" element={<Navigate to="/quiz/edit/:id" replace />} />
             <Route path="/stats/:id" element={<Navigate to="/quiz/stats/:id" replace />} />
