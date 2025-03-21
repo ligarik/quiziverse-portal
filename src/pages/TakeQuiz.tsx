@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
@@ -24,12 +25,24 @@ interface QuestionWithAnswers extends Question {
   answers: Answer[];
 }
 
+// Define specific types for different question answer formats
+type SingleChoiceAnswer = string;
+type MultipleChoiceAnswer = string[];
+type TextAnswer = string;
+type NumberAnswer = number;
+type MatchingAnswer = Record<string, string>;
+
+// Define a type that can hold all possible answer types
+type QuestionAnswers = {
+  [questionId: string]: SingleChoiceAnswer | MultipleChoiceAnswer | MatchingAnswer;
+};
+
 const TakeQuiz = () => {
   const { id } = useParams<{ id: string }>();
   const [quiz, setQuiz] = useState<Quiz | null>(null);
   const [questions, setQuestions] = useState<QuestionWithAnswers[]>([]);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-  const [selectedAnswers, setSelectedAnswers] = useState<Record<string, string | string[]>>({});
+  const [selectedAnswers, setSelectedAnswers] = useState<QuestionAnswers>({});
   const [textAnswers, setTextAnswers] = useState<Record<string, string>>({});
   const [numberAnswers, setNumberAnswers] = useState<Record<string, number>>({});
   const [isLoading, setIsLoading] = useState(true);
@@ -243,7 +256,7 @@ const TakeQuiz = () => {
   };
 
   const handleSelectMultipleAnswers = (questionId: string, answerId: string) => {
-    const currentAnswers = selectedAnswers[questionId] as string[] || [];
+    const currentAnswers = (selectedAnswers[questionId] || []) as string[];
     
     if (currentAnswers.includes(answerId)) {
       setSelectedAnswers({
@@ -294,7 +307,8 @@ const TakeQuiz = () => {
       } else if (q.question_type === QuestionType.NUMBER_INPUT) {
         return numberAnswers[q.id] === undefined;
       } else if (q.question_type === QuestionType.MULTIPLE_CHOICE) {
-        return !selectedAnswers[q.id] || (selectedAnswers[q.id] as string[]).length === 0;
+        const multipleAnswers = selectedAnswers[q.id] as string[] || [];
+        return multipleAnswers.length === 0;
       } else if (q.question_type === QuestionType.MATCHING) {
         const matches = selectedAnswers[q.id] as Record<string, string> || {};
         return !matches || Object.keys(matches).length < q.answers.length;
@@ -348,8 +362,9 @@ const TakeQuiz = () => {
             .map(a => a.id);
           
           isCorrect = 
-            (userAnswer as string[]).length === correctIds.length && 
-            correctIds.every(id => (userAnswer as string[]).includes(id));
+            Array.isArray(userAnswer) && 
+            userAnswer.length === correctIds.length && 
+            correctIds.every(id => userAnswer.includes(id));
         } else if (question.question_type === QuestionType.MATCHING) {
           // For matching questions
           const selectedMatches = selectedAnswers[question.id] as Record<string, string> || {};
@@ -536,7 +551,7 @@ const TakeQuiz = () => {
                           // Multiple choice question type
                           currentQuestion.answers.map(answer => {
                             const answers = selectedAnswers[currentQuestion.id] as string[] || [];
-                            const isSelected = answers.includes(answer.id);
+                            const isSelected = Array.isArray(answers) && answers.includes(answer.id);
                             
                             return (
                               <Button
@@ -618,7 +633,8 @@ const TakeQuiz = () => {
                         : currentQuestion?.question_type === QuestionType.NUMBER_INPUT
                           ? numberAnswers[currentQuestion?.id] === undefined
                           : currentQuestion?.question_type === QuestionType.MULTIPLE_CHOICE
-                            ? !selectedAnswers[currentQuestion?.id] || (selectedAnswers[currentQuestion?.id] as string[]).length === 0
+                            ? !selectedAnswers[currentQuestion?.id] || 
+                              (selectedAnswers[currentQuestion?.id] as string[]).length === 0
                             : currentQuestion?.question_type === QuestionType.MATCHING
                               ? !selectedAnswers[currentQuestion?.id] || 
                                 Object.keys(selectedAnswers[currentQuestion?.id] as Record<string, string> || {}).length < 
@@ -709,4 +725,3 @@ const TakeQuiz = () => {
 };
 
 export default TakeQuiz;
-
