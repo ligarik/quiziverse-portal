@@ -1,14 +1,24 @@
-
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { QuizAttempt } from '@/integrations/supabase/client';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { ChartContainer, ChartTooltip } from '@/components/ui/chart';
+
+interface AttemptWithUser {
+  id: string;
+  quiz_id: string;
+  user_id: string;
+  user_email: string;
+  score: number;
+  max_score: number;
+  started_at: string;
+  completed_at: string | null;
+  is_graded: boolean;
+  custom_fields?: any[];
+}
 
 interface QuizResultsAnalyticsProps {
-  attempts: QuizAttempt[];
+  attempts: AttemptWithUser[];
   maxScore: number;
 }
 
@@ -235,7 +245,7 @@ const QuizResultsAnalytics = ({ attempts, maxScore }: QuizResultsAnalyticsProps)
                   </ResponsiveContainer>
                 </div>
               ) : (
-                <p className="text-muted-foreground">Недостаточно данных для отображения графика</p>
+                <p className="text-muted-foreground">Недостаточно данных для отображения графи��а</p>
               )}
               
               <div className="mt-6">
