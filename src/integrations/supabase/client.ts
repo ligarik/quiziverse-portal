@@ -40,7 +40,7 @@ export type Quiz = {
   randomize_questions?: boolean;
   show_feedback?: boolean;
   
-  // New properties
+  // Updated properties properly matching the database schema
   show_question_numbers?: boolean;
   show_progress_bar?: boolean;
   randomize_answers?: boolean;
