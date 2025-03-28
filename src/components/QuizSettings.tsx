@@ -28,7 +28,8 @@ import {
   ArrowLeft, 
   Check,
   MinusCircle,
-  Lock
+  Lock,
+  Loader2
 } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { Quiz, supabase } from '@/integrations/supabase/client';
@@ -85,14 +86,20 @@ const QuizSettings = ({ quiz, onSettingsUpdated }: QuizSettingsProps) => {
         password: passwordProtect ? password : null
       };
       
+      console.log('Saving quiz settings:', updates);
+      
       const { data, error } = await supabase
         .from('quizzes')
         .update(updates)
         .eq('id', quiz.id)
-        .select('*')
-        .single();
+        .select();
       
-      if (error) throw error;
+      if (error) {
+        console.error('Error saving settings:', error);
+        throw error;
+      }
+      
+      console.log('Updated quiz data:', data);
       
       const updatedQuiz = {
         ...quiz,
@@ -251,7 +258,7 @@ const QuizSettings = ({ quiz, onSettingsUpdated }: QuizSettingsProps) => {
                   />
                 </div>
                 <div className="text-sm text-muted-foreground">
-                  Варианты ответов будут показаны в случайном порядке для каждого воп��оса
+                  Варианты ответов будут показаны в случайном порядке для каждого вопроса
                 </div>
               </div>
               
@@ -277,7 +284,14 @@ const QuizSettings = ({ quiz, onSettingsUpdated }: QuizSettingsProps) => {
                 disabled={isLoading}
                 className="w-full"
               >
-                Сохранить настройки
+                {isLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Сохранение...
+                  </>
+                ) : (
+                  'Сохранить настройки'
+                )}
               </Button>
             </CardContent>
           </Card>

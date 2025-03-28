@@ -349,7 +349,13 @@ const EditQuiz = () => {
   };
 
   const handleSettingsUpdated = (updatedQuiz: Quiz) => {
+    console.log('Settings updated in parent component:', updatedQuiz);
     setQuiz(updatedQuiz);
+    
+    toast({
+      title: 'Настройки обновлены',
+      description: 'Настройки теста успешно сохранены',
+    });
   };
 
   if (isLoading) {
