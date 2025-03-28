@@ -85,14 +85,16 @@ const TakeQuiz = () => {
           return;
         }
         
-        if (quizData.password) {
+        const typedQuizData = quizData as Quiz;
+        
+        if (typedQuizData.password) {
           setPasswordRequired(true);
-          setQuiz(quizData as Quiz);
+          setQuiz(typedQuizData);
           setIsLoading(false);
           return;
         }
         
-        await loadQuizQuestions(quizData as Quiz);
+        await loadQuizQuestions(typedQuizData);
       } catch (error) {
         console.error('Ошибка при загрузке теста:', error);
         toast({
