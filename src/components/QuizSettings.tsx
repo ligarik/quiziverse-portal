@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -48,7 +49,7 @@ const QuizSettings = ({ quiz, onSettingsUpdated }: QuizSettingsProps) => {
   const [showQuestionNumbers, setShowQuestionNumbers] = useState<boolean>(quiz.show_question_numbers || false);
   const [showProgressBar, setShowProgressBar] = useState<boolean>(quiz.show_progress_bar || false);
   const [randomizeAnswers, setRandomizeAnswers] = useState<boolean>(quiz.randomize_answers || false);
-  const [limitQuestions, setLimitQuestions] = useState<boolean>(quiz.question_limit !== undefined);
+  const [limitQuestions, setLimitQuestions] = useState<boolean>(quiz.question_limit !== undefined && quiz.question_limit !== null);
   const [questionLimit, setQuestionLimit] = useState<number>(quiz.question_limit || 10);
   const [showElapsedTime, setShowElapsedTime] = useState<boolean>(quiz.show_elapsed_time || false);
   const [preventCopy, setPreventCopy] = useState<boolean>(quiz.prevent_copy || false);
@@ -66,7 +67,7 @@ const QuizSettings = ({ quiz, onSettingsUpdated }: QuizSettingsProps) => {
     try {
       setIsLoading(true);
       
-      // Now include all fields since we've added them to the database
+      // Fix the question_limit field based on the limitQuestions toggle
       const updates = {
         time_limit: timeLimit,
         randomize_questions: randomizeQuestions,

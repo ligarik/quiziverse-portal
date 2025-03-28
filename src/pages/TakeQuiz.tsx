@@ -89,7 +89,7 @@ const TakeQuiz = () => {
         
         if (questionsError) throw questionsError;
         
-        const questionsWithAnswers: QuestionWithAnswers[] = [];
+        let questionsWithAnswers: QuestionWithAnswers[] = [];
         
         for (const question of questionsData || []) {
           // Map database type to QuestionType enum
@@ -187,6 +187,11 @@ const TakeQuiz = () => {
         } else {
           // Otherwise, sort by position
           questionsWithAnswers.sort((a, b) => a.position - b.position);
+        }
+        
+        // Apply question limit if set
+        if (quizData.question_limit && quizData.question_limit > 0 && questionsWithAnswers.length > quizData.question_limit) {
+          questionsWithAnswers = questionsWithAnswers.slice(0, quizData.question_limit);
         }
         
         setQuiz(quizData);
