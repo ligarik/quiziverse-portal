@@ -289,40 +289,67 @@ export type Database = {
       }
       quizzes: {
         Row: {
+          confirm_finish: boolean | null
+          confirm_last_next: boolean | null
           created_at: string
           created_by: string
           description: string | null
           id: string
           is_public: boolean
           is_published: boolean | null
+          prevent_back_button: boolean | null
+          prevent_copy: boolean | null
+          question_limit: number | null
+          randomize_answers: boolean | null
           randomize_questions: boolean | null
+          show_elapsed_time: boolean | null
           show_feedback: boolean | null
+          show_progress_bar: boolean | null
+          show_question_numbers: boolean | null
           time_limit: number | null
           title: string
           updated_at: string
         }
         Insert: {
+          confirm_finish?: boolean | null
+          confirm_last_next?: boolean | null
           created_at?: string
           created_by: string
           description?: string | null
           id?: string
           is_public?: boolean
           is_published?: boolean | null
+          prevent_back_button?: boolean | null
+          prevent_copy?: boolean | null
+          question_limit?: number | null
+          randomize_answers?: boolean | null
           randomize_questions?: boolean | null
+          show_elapsed_time?: boolean | null
           show_feedback?: boolean | null
+          show_progress_bar?: boolean | null
+          show_question_numbers?: boolean | null
           time_limit?: number | null
           title: string
           updated_at?: string
         }
         Update: {
+          confirm_finish?: boolean | null
+          confirm_last_next?: boolean | null
           created_at?: string
           created_by?: string
           description?: string | null
           id?: string
           is_public?: boolean
           is_published?: boolean | null
+          prevent_back_button?: boolean | null
+          prevent_copy?: boolean | null
+          question_limit?: number | null
+          randomize_answers?: boolean | null
           randomize_questions?: boolean | null
+          show_elapsed_time?: boolean | null
           show_feedback?: boolean | null
+          show_progress_bar?: boolean | null
+          show_question_numbers?: boolean | null
           time_limit?: number | null
           title?: string
           updated_at?: string

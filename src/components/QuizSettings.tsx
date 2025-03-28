@@ -66,12 +66,20 @@ const QuizSettings = ({ quiz, onSettingsUpdated }: QuizSettingsProps) => {
     try {
       setIsLoading(true);
       
-      // Only include the fields that exist in the database schema
-      // Currently, only these fields are in the database
+      // Now include all fields since we've added them to the database
       const updates = {
         time_limit: timeLimit,
         randomize_questions: randomizeQuestions,
         show_feedback: showFeedback,
+        show_question_numbers: showQuestionNumbers,
+        show_progress_bar: showProgressBar,
+        randomize_answers: randomizeAnswers,
+        question_limit: limitQuestions ? questionLimit : null,
+        show_elapsed_time: showElapsedTime,
+        prevent_copy: preventCopy,
+        prevent_back_button: preventBackButton,
+        confirm_last_next: confirmLastNext,
+        confirm_finish: confirmFinish
       };
       
       const { data, error } = await supabase
@@ -83,21 +91,10 @@ const QuizSettings = ({ quiz, onSettingsUpdated }: QuizSettingsProps) => {
       
       if (error) throw error;
       
-      // We assume the update was successful
-      // Store the new settings in the local state for the UI
+      // Update the local state with the new values
       const updatedQuiz = {
         ...quiz,
-        ...updates,
-        // Keep the UI state for new fields that are not yet in the database
-        show_question_numbers: showQuestionNumbers,
-        show_progress_bar: showProgressBar,
-        randomize_answers: randomizeAnswers,
-        question_limit: limitQuestions ? questionLimit : undefined,
-        show_elapsed_time: showElapsedTime,
-        prevent_copy: preventCopy,
-        prevent_back_button: preventBackButton,
-        confirm_last_next: confirmLastNext,
-        confirm_finish: confirmFinish
+        ...updates
       };
       
       onSettingsUpdated(updatedQuiz);
@@ -252,7 +249,7 @@ const QuizSettings = ({ quiz, onSettingsUpdated }: QuizSettingsProps) => {
                   />
                 </div>
                 <div className="text-sm text-muted-foreground">
-                  Варианты ответов будут показаны в случайном порядке для каждого вопроса
+                  Варианты ответов будут показаны в случайном порядке для каждого воп��оса
                 </div>
               </div>
               
