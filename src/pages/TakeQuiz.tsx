@@ -4,6 +4,7 @@ import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
 import { 
   Card, 
   CardContent, 
@@ -52,6 +53,8 @@ const TakeQuiz = () => {
   const [password, setPassword] = useState('');
   const [passwordError, setPasswordError] = useState('');
   const [isCheckingPassword, setIsCheckingPassword] = useState(false);
+  const [isStarted, setIsStarted] = useState(false);
+  const [isFinished, setIsFinished] = useState(false);
   const { user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -243,6 +246,8 @@ const TakeQuiz = () => {
           setCustomFieldsStep(true);
         }
       }
+      
+      setIsStarted(true);
     } catch (error) {
       console.error('Ошибка при загрузке вопросов:', error);
       toast({
@@ -459,6 +464,7 @@ const TakeQuiz = () => {
       });
       
       setQuizComplete(true);
+      setIsFinished(true);
     } catch (error) {
       console.error('Ошибка при отправке ответов:', error);
       toast({
