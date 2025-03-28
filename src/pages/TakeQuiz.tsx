@@ -87,12 +87,12 @@ const TakeQuiz = () => {
         
         if (quizData.password) {
           setPasswordRequired(true);
-          setQuiz(quizData);
+          setQuiz(quizData as Quiz);
           setIsLoading(false);
           return;
         }
         
-        await loadQuizQuestions(quizData);
+        await loadQuizQuestions(quizData as Quiz);
       } catch (error) {
         console.error('Ошибка при загрузке теста:', error);
         toast({

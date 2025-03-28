@@ -49,7 +49,7 @@ export type Quiz = {
   prevent_back_button?: boolean;
   confirm_last_next?: boolean;
   confirm_finish?: boolean;
-  password?: string; // This field is now properly included
+  password?: string; // This field is now properly included as optional
 };
 
 export type Question = {
