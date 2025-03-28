@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -28,7 +27,8 @@ import {
   Copy, 
   ArrowLeft, 
   Check,
-  MinusCircle
+  MinusCircle,
+  Lock
 } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { Quiz, supabase } from '@/integrations/supabase/client';
@@ -45,7 +45,6 @@ const QuizSettings = ({ quiz, onSettingsUpdated }: QuizSettingsProps) => {
   const [randomizeQuestions, setRandomizeQuestions] = useState<boolean>(quiz.randomize_questions || false);
   const [showFeedback, setShowFeedback] = useState<boolean>(quiz.show_feedback || false);
   
-  // New settings
   const [showQuestionNumbers, setShowQuestionNumbers] = useState<boolean>(quiz.show_question_numbers || false);
   const [showProgressBar, setShowProgressBar] = useState<boolean>(quiz.show_progress_bar || false);
   const [randomizeAnswers, setRandomizeAnswers] = useState<boolean>(quiz.randomize_answers || false);
@@ -57,6 +56,9 @@ const QuizSettings = ({ quiz, onSettingsUpdated }: QuizSettingsProps) => {
   const [confirmLastNext, setConfirmLastNext] = useState<boolean>(quiz.confirm_last_next || false);
   const [confirmFinish, setConfirmFinish] = useState<boolean>(quiz.confirm_finish || true);
   
+  const [passwordProtect, setPasswordProtect] = useState<boolean>(!!quiz.password);
+  const [password, setPassword] = useState<string>(quiz.password || '');
+  
   const [activeTab, setActiveTab] = useState("general");
   
   const { toast } = useToast();
@@ -67,7 +69,6 @@ const QuizSettings = ({ quiz, onSettingsUpdated }: QuizSettingsProps) => {
     try {
       setIsLoading(true);
       
-      // Fix the question_limit field based on the limitQuestions toggle
       const updates = {
         time_limit: timeLimit,
         randomize_questions: randomizeQuestions,
@@ -80,7 +81,8 @@ const QuizSettings = ({ quiz, onSettingsUpdated }: QuizSettingsProps) => {
         prevent_copy: preventCopy,
         prevent_back_button: preventBackButton,
         confirm_last_next: confirmLastNext,
-        confirm_finish: confirmFinish
+        confirm_finish: confirmFinish,
+        password: passwordProtect ? password : null
       };
       
       const { data, error } = await supabase
@@ -92,7 +94,6 @@ const QuizSettings = ({ quiz, onSettingsUpdated }: QuizSettingsProps) => {
       
       if (error) throw error;
       
-      // Update the local state with the new values
       const updatedQuiz = {
         ...quiz,
         ...updates
@@ -116,7 +117,6 @@ const QuizSettings = ({ quiz, onSettingsUpdated }: QuizSettingsProps) => {
     }
   };
 
-  // Example of what the progressive behavior would look like
   const progressValue = 65;
   
   return (
@@ -126,6 +126,7 @@ const QuizSettings = ({ quiz, onSettingsUpdated }: QuizSettingsProps) => {
           <TabsTrigger value="general">Основные настройки</TabsTrigger>
           <TabsTrigger value="appearance">Отображение</TabsTrigger>
           <TabsTrigger value="behavior">Поведение</TabsTrigger>
+          <TabsTrigger value="security">Безопасность</TabsTrigger>
           <TabsTrigger value="custom_fields">Дополнительные поля</TabsTrigger>
         </TabsList>
         
@@ -426,6 +427,57 @@ const QuizSettings = ({ quiz, onSettingsUpdated }: QuizSettingsProps) => {
               <Button 
                 onClick={saveSettings}
                 disabled={isLoading}
+                className="w-full"
+              >
+                Сохранить настройки
+              </Button>
+            </CardContent>
+          </Card>
+        </TabsContent>
+        
+        <TabsContent value="security">
+          <Card>
+            <CardHeader>
+              <CardTitle>Настройки безопасности</CardTitle>
+              <CardDescription>
+                Дополнительные параметры защиты вашего теста
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Lock className="h-4 w-4 text-muted-foreground" />
+                    <Label htmlFor="passwordProtect">Защита паролем</Label>
+                  </div>
+                  <Switch
+                    id="passwordProtect"
+                    checked={passwordProtect}
+                    onCheckedChange={setPasswordProtect}
+                  />
+                </div>
+                <div className="text-sm text-muted-foreground">
+                  Требовать ввод пароля перед началом прохождения теста
+                </div>
+                
+                {passwordProtect && (
+                  <div className="mt-2">
+                    <Label htmlFor="password">Пароль</Label>
+                    <Input
+                      id="password"
+                      type="text"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="Введите пароль для доступа к тесту"
+                      className="mt-1"
+                    />
+                  </div>
+                )}
+              </div>
+              
+              <Button 
+                onClick={saveSettings}
+                disabled={isLoading || (passwordProtect && !password)}
                 className="w-full"
               >
                 Сохранить настройки

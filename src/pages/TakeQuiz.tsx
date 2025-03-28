@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
@@ -13,7 +12,7 @@ import {
   CardHeader, 
   CardTitle 
 } from '@/components/ui/card';
-import { Loader2, ArrowLeft, ArrowRight, CheckCircle2 } from 'lucide-react';
+import { Loader2, ArrowLeft, ArrowRight, CheckCircle2, Lock } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import { useToast } from '@/components/ui/use-toast';
@@ -25,14 +24,12 @@ interface QuestionWithAnswers extends Question {
   answers: Answer[];
 }
 
-// Define specific types for different question answer formats
 type SingleChoiceAnswer = string;
 type MultipleChoiceAnswer = string[];
 type TextAnswer = string;
 type NumberAnswer = number;
 type MatchingAnswer = Record<string, string>;
 
-// Define a type that can hold all possible answer types
 type QuestionAnswers = {
   [questionId: string]: SingleChoiceAnswer | MultipleChoiceAnswer | MatchingAnswer;
 };
@@ -51,7 +48,10 @@ const TakeQuiz = () => {
   const [quizComplete, setQuizComplete] = useState(false);
   const [score, setScore] = useState({ correct: 0, total: 0 });
   const [customFieldsStep, setCustomFieldsStep] = useState(false);
-  
+  const [passwordRequired, setPasswordRequired] = useState(false);
+  const [password, setPassword] = useState('');
+  const [passwordError, setPasswordError] = useState('');
+  const [isCheckingPassword, setIsCheckingPassword] = useState(false);
   const { user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -78,153 +78,18 @@ const TakeQuiz = () => {
             description: 'Тест не найден или не опубликован',
             variant: 'destructive',
           });
-          navigate('/dashboard');
+          navigate('/');
           return;
         }
         
-        const { data: questionsData, error: questionsError } = await supabase
-          .from('questions')
-          .select('*')
-          .eq('quiz_id', id);
-        
-        if (questionsError) throw questionsError;
-        
-        let questionsWithAnswers: QuestionWithAnswers[] = [];
-        
-        for (const question of questionsData || []) {
-          // Map database type to QuestionType enum
-          let questionType: QuestionType;
-          
-          switch (question.question_type) {
-            case 'single_choice':
-              questionType = QuestionType.SINGLE_CHOICE;
-              break;
-            case 'multiple_choice':
-              questionType = QuestionType.MULTIPLE_CHOICE;
-              break;
-            case 'text':
-              questionType = QuestionType.TEXT_INPUT;
-              break;
-            case 'true_false':
-              questionType = QuestionType.TRUE_FALSE;
-              break;
-            case 'matching':
-              questionType = QuestionType.MATCHING;
-              break;
-            case 'number':
-              questionType = QuestionType.NUMBER_INPUT;
-              break;
-            default:
-              questionType = QuestionType.SINGLE_CHOICE;
-          }
-          
-          // Get answers from options or create dummy answers
-          const answers: Answer[] = [];
-          
-          if (question.options) {
-            const options = question.options as any[];
-            const correctAnswers = question.correct_answers as any[];
-            
-            options.forEach((option, index) => {
-              if (questionType === QuestionType.MATCHING) {
-                answers.push({
-                  id: option.id || index.toString(),
-                  question_id: question.id,
-                  answer_text: option.text,
-                  matching_text: option.matchingText || "",
-                  is_correct: correctAnswers ? correctAnswers.includes(option.id || index.toString()) : false,
-                  created_at: question.created_at
-                });
-              } else {
-                answers.push({
-                  id: option.id || index.toString(),
-                  question_id: question.id,
-                  answer_text: option.text,
-                  is_correct: correctAnswers ? correctAnswers.includes(option.id || index.toString()) : false,
-                  created_at: question.created_at
-                });
-              }
-            });
-          } else if (questionType === QuestionType.TEXT_INPUT && question.correct_answers) {
-            // For text input questions, create a single correct answer
-            const correctAnswer = (question.correct_answers as any[])[0] || "";
-            answers.push({
-              id: "0",
-              question_id: question.id,
-              answer_text: correctAnswer,
-              is_correct: true,
-              created_at: question.created_at
-            });
-          } else if (questionType === QuestionType.NUMBER_INPUT && question.correct_answers) {
-            // For number input questions, create a single correct answer
-            const correctAnswer = (question.correct_answers as any[])[0] || 0;
-            answers.push({
-              id: "0",
-              question_id: question.id,
-              answer_text: correctAnswer.toString(),
-              is_correct: true,
-              created_at: question.created_at
-            });
-          }
-          
-          questionsWithAnswers.push({
-            id: question.id,
-            quiz_id: question.quiz_id,
-            text: question.content,  // Map content to text for UI
-            content: question.content,
-            created_at: question.created_at,
-            question_type: questionType,
-            points: question.points,
-            image_url: question.image_url,
-            position: question.position,
-            answers
-          });
+        if (quizData.password) {
+          setPasswordRequired(true);
+          setQuiz(quizData);
+          setIsLoading(false);
+          return;
         }
         
-        // If randomize_questions is enabled, shuffle the questions
-        if (quizData.randomize_questions) {
-          questionsWithAnswers.sort(() => Math.random() - 0.5);
-        } else {
-          // Otherwise, sort by position
-          questionsWithAnswers.sort((a, b) => a.position - b.position);
-        }
-        
-        // Apply question limit if set
-        if (quizData.question_limit && quizData.question_limit > 0 && questionsWithAnswers.length > quizData.question_limit) {
-          questionsWithAnswers = questionsWithAnswers.slice(0, quizData.question_limit);
-        }
-        
-        setQuiz(quizData);
-        setQuestions(questionsWithAnswers);
-        
-        if (user) {
-          const { data: attemptData, error: attemptError } = await supabase
-            .from('quiz_attempts')
-            .insert({
-              quiz_id: id,
-              user_id: user.id,
-              score: 0,
-              max_score: questionsWithAnswers.reduce((total, q) => total + (q.points || 1), 0)
-            })
-            .select('id')
-            .single();
-          
-          if (attemptError) throw attemptError;
-          
-          setAttemptId(attemptData.id);
-          
-          // Check if there are custom fields
-          const { data: customFields, error: customFieldsError } = await supabase
-            .from('quiz_custom_fields')
-            .select('*')
-            .eq('quiz_id', id);
-          
-          if (customFieldsError) throw customFieldsError;
-          
-          if (customFields && customFields.length > 0) {
-            setCustomFieldsStep(true);
-          }
-        }
+        await loadQuizQuestions(quizData);
       } catch (error) {
         console.error('Ошибка при загрузке теста:', error);
         toast({
@@ -232,15 +97,185 @@ const TakeQuiz = () => {
           description: 'Не удалось загрузить данные теста',
           variant: 'destructive',
         });
-        navigate('/dashboard');
+        navigate('/');
       } finally {
         setIsLoading(false);
       }
     };
     
     fetchQuizData();
-  }, [id, user, navigate, toast]);
-
+  }, [id, navigate, toast]);
+  
+  const loadQuizQuestions = async (quizData: Quiz) => {
+    try {
+      const { data: questionsData, error: questionsError } = await supabase
+        .from('questions')
+        .select('*')
+        .eq('quiz_id', quizData.id);
+      
+      if (questionsError) throw questionsError;
+      
+      let questionsWithAnswers: QuestionWithAnswers[] = [];
+      
+      for (const question of questionsData || []) {
+        let questionType: QuestionType;
+        
+        switch (question.question_type) {
+          case 'single_choice':
+            questionType = QuestionType.SINGLE_CHOICE;
+            break;
+          case 'multiple_choice':
+            questionType = QuestionType.MULTIPLE_CHOICE;
+            break;
+          case 'text':
+            questionType = QuestionType.TEXT_INPUT;
+            break;
+          case 'true_false':
+            questionType = QuestionType.TRUE_FALSE;
+            break;
+          case 'matching':
+            questionType = QuestionType.MATCHING;
+            break;
+          case 'number':
+            questionType = QuestionType.NUMBER_INPUT;
+            break;
+          default:
+            questionType = QuestionType.SINGLE_CHOICE;
+        }
+        
+        const answers: Answer[] = [];
+        
+        if (question.options) {
+          const options = question.options as any[];
+          const correctAnswers = question.correct_answers as any[];
+          
+          options.forEach((option, index) => {
+            if (questionType === QuestionType.MATCHING) {
+              answers.push({
+                id: option.id || index.toString(),
+                question_id: question.id,
+                answer_text: option.text,
+                matching_text: option.matchingText || "",
+                is_correct: correctAnswers ? correctAnswers.includes(option.id || index.toString()) : false,
+                created_at: question.created_at
+              });
+            } else {
+              answers.push({
+                id: option.id || index.toString(),
+                question_id: question.id,
+                answer_text: option.text,
+                is_correct: correctAnswers ? correctAnswers.includes(option.id || index.toString()) : false,
+                created_at: question.created_at
+              });
+            }
+          });
+        } else if (questionType === QuestionType.TEXT_INPUT && question.correct_answers) {
+          const correctAnswer = (question.correct_answers as any[])[0] || "";
+          answers.push({
+            id: "0",
+            question_id: question.id,
+            answer_text: correctAnswer,
+            is_correct: true,
+            created_at: question.created_at
+          });
+        } else if (questionType === QuestionType.NUMBER_INPUT && question.correct_answers) {
+          const correctAnswer = (question.correct_answers as any[])[0] || 0;
+          answers.push({
+            id: "0",
+            question_id: question.id,
+            answer_text: correctAnswer.toString(),
+            is_correct: true,
+            created_at: question.created_at
+          });
+        }
+        
+        questionsWithAnswers.push({
+          id: question.id,
+          quiz_id: question.quiz_id,
+          text: question.content,
+          content: question.content,
+          created_at: question.created_at,
+          question_type: questionType,
+          points: question.points,
+          image_url: question.image_url,
+          position: question.position,
+          answers
+        });
+      }
+      
+      if (quizData.randomize_questions) {
+        questionsWithAnswers.sort(() => Math.random() - 0.5);
+      } else {
+        questionsWithAnswers.sort((a, b) => a.position - b.position);
+      }
+      
+      if (quizData.question_limit && quizData.question_limit > 0 && questionsWithAnswers.length > quizData.question_limit) {
+        questionsWithAnswers = questionsWithAnswers.slice(0, quizData.question_limit);
+      }
+      
+      setQuiz(quizData);
+      setQuestions(questionsWithAnswers);
+      
+      if (user) {
+        const { data: attemptData, error: attemptError } = await supabase
+          .from('quiz_attempts')
+          .insert({
+            quiz_id: id,
+            user_id: user.id,
+            score: 0,
+            max_score: questionsWithAnswers.reduce((total, q) => total + (q.points || 1), 0)
+          })
+          .select('id')
+          .single();
+        
+        if (attemptError) throw attemptError;
+        
+        setAttemptId(attemptData.id);
+        
+        const { data: customFields, error: customFieldsError } = await supabase
+          .from('quiz_custom_fields')
+          .select('*')
+          .eq('quiz_id', id);
+        
+        if (customFieldsError) throw customFieldsError;
+        
+        if (customFields && customFields.length > 0) {
+          setCustomFieldsStep(true);
+        }
+      }
+    } catch (error) {
+      console.error('Ошибка при загрузке вопросов:', error);
+      toast({
+        title: 'Ошибка',
+        description: 'Не удалось загрузить вопросы теста',
+        variant: 'destructive',
+      });
+      navigate('/');
+    }
+  };
+  
+  const handlePasswordSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!quiz) return;
+    
+    setIsCheckingPassword(true);
+    setPasswordError('');
+    
+    try {
+      if (password === quiz.password) {
+        setPasswordRequired(false);
+        await loadQuizQuestions(quiz);
+      } else {
+        setPasswordError('Неверный пароль. Пожалуйста, попробуйте снова.');
+      }
+    } catch (error) {
+      console.error('Ошибка при проверке пароля:', error);
+    } finally {
+      setIsCheckingPassword(false);
+    }
+  };
+  
   const handleNextQuestion = () => {
     if (currentQuestionIndex < questions.length - 1) {
       setCurrentQuestionIndex(currentQuestionIndex + 1);
@@ -305,7 +340,6 @@ const TakeQuiz = () => {
   const handleSubmitQuiz = async () => {
     if (!id || !questions.length) return;
     
-    // Check for unanswered questions
     const unansweredQuestions = questions.filter(q => {
       if (q.question_type === QuestionType.TEXT_INPUT) {
         return !textAnswers[q.id];
@@ -350,17 +384,13 @@ const TakeQuiz = () => {
         let userAnswer: any = null;
         
         if (question.question_type === QuestionType.TEXT_INPUT) {
-          // For text questions
           userAnswer = textAnswers[question.id];
-          // Will be manually graded
           isCorrect = false;
         } else if (question.question_type === QuestionType.NUMBER_INPUT) {
-          // For number questions
           userAnswer = numberAnswers[question.id];
           const correctNumber = Number(question.answers[0]?.answer_text || 0);
           isCorrect = userAnswer === correctNumber;
         } else if (question.question_type === QuestionType.MULTIPLE_CHOICE) {
-          // For multiple choice questions
           userAnswer = selectedAnswers[question.id] || [];
           const correctIds = question.answers
             .filter(a => a.is_correct)
@@ -371,11 +401,9 @@ const TakeQuiz = () => {
             userAnswer.length === correctIds.length && 
             correctIds.every(id => userAnswer.includes(id));
         } else if (question.question_type === QuestionType.MATCHING) {
-          // For matching questions
           const selectedMatches = selectedAnswers[question.id] as Record<string, string> || {};
           userAnswer = selectedMatches;
           
-          // Check if all matches are correct
           const correctMatches = question.answers.map((a, index) => ({
             id: a.id,
             matchingText: a.matching_text
@@ -387,12 +415,9 @@ const TakeQuiz = () => {
             
             if (answerIndex === -1 || selectedMatchIndex === -1) return false;
             
-            // The matching is correct if the matching_text of the selected match
-            // is the same as the matching_text of the correct match
             return question.answers[selectedMatchIndex].matching_text === question.answers[answerIndex].matching_text;
           });
         } else {
-          // For single choice and true/false questions
           userAnswer = selectedAnswers[question.id];
           const correctAnswer = question.answers.find(a => a.is_correct);
           isCorrect = Boolean(userAnswer && correctAnswer?.id === userAnswer);
@@ -410,13 +435,12 @@ const TakeQuiz = () => {
               attempt_id: attemptId,
               question_id: question.id,
               user_answer: userAnswer,
-              is_correct: question.question_type === QuestionType.TEXT_INPUT ? null : isCorrect // null for text questions pending review
+              is_correct: question.question_type === QuestionType.TEXT_INPUT ? null : isCorrect
             });
         }
       }
       
       if (user && attemptId) {
-        // Set the score but mark as not graded for quizzes with text questions
         const hasTextQuestions = questions.some(q => q.question_type === QuestionType.TEXT_INPUT);
         
         await supabase
@@ -424,7 +448,7 @@ const TakeQuiz = () => {
           .update({
             score: totalPoints,
             completed_at: new Date().toISOString(),
-            is_graded: !hasTextQuestions // Only mark as graded if there are no text questions
+            is_graded: !hasTextQuestions
           })
           .eq('id', attemptId);
       }
@@ -467,6 +491,328 @@ const TakeQuiz = () => {
   const progress = questions.length > 0 
     ? Math.round((currentQuestionIndex + 1) / questions.length * 100) 
     : 0;
+
+  if (passwordRequired && quiz) {
+    return (
+      <div className="min-h-screen flex flex-col">
+        <Navbar />
+        
+        <main className="flex-grow py-16 px-4 md:px-6">
+          <div className="container mx-auto max-w-3xl">
+            <Card className="mb-6">
+              <CardHeader>
+                <CardTitle>{quiz.title}</CardTitle>
+                {quiz.description && (
+                  <CardDescription>{quiz.description}</CardDescription>
+                )}
+              </CardHeader>
+              
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="bg-amber-50 border border-amber-200 rounded-md p-4">
+                    <div className="flex items-start">
+                      <Lock className="h-5 w-5 text-amber-500 mt-0.5 mr-2" />
+                      <div>
+                        <h3 className="font-medium text-amber-900">Тест защищен паролем</h3>
+                        <p className="text-amber-700 text-sm">Для прохождения теста введите пароль, предоставленный вашим преподавателем или организатором.</p>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <form onSubmit={handlePasswordSubmit} className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="password">Пароль</Label>
+                      <Input
+                        id="password"
+                        type="password"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        required
+                        className={passwordError ? "border-red-500" : ""}
+                      />
+                      {passwordError && (
+                        <p className="text-red-500 text-sm">{passwordError}</p>
+                      )}
+                    </div>
+                    
+                    <Button 
+                      type="submit" 
+                      className="w-full"
+                      disabled={isCheckingPassword || !password}
+                    >
+                      {isCheckingPassword ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Проверка...
+                        </>
+                      ) : (
+                        'Начать тест'
+                      )}
+                    </Button>
+                  </form>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </main>
+        
+        <Footer />
+      </div>
+    );
+  }
+
+  if (!isStarted && quiz) {
+    return (
+      <div className="min-h-screen flex flex-col">
+        <Navbar />
+        
+        <main className="flex-grow py-16 px-4 md:px-6">
+          <div className="container mx-auto max-w-3xl">
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle>{quiz?.title}</CardTitle>
+                    <CardDescription>{quiz?.description}</CardDescription>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-xl font-bold">
+                      {currentQuestionIndex + 1} / {questions.length}
+                    </span>
+                  </div>
+                </div>
+                
+                <div className="w-full bg-muted rounded-full h-2 mt-4">
+                  <div 
+                    className="bg-primary h-2 rounded-full transition-all duration-300" 
+                    style={{ width: `${progress}%` }}
+                  />
+                </div>
+              </CardHeader>
+              
+              <CardContent className="pt-4">
+                {currentQuestion && (
+                  <div className="space-y-6">
+                    <div>
+                      <h3 className="text-lg font-semibold mb-4">
+                        {currentQuestion.text}
+                      </h3>
+                      
+                      {currentQuestion.image_url && (
+                        <div className="mb-4">
+                          <img 
+                            src={currentQuestion.image_url}
+                            alt="Question image"
+                            className="max-h-64 rounded-md object-contain mx-auto"
+                          />
+                        </div>
+                      )}
+                      
+                      <div className="space-y-3">
+                        {currentQuestion.question_type === QuestionType.TEXT_INPUT ? (
+                          <div className="space-y-2">
+                            <Textarea
+                              placeholder="Введите ваш ответ"
+                              value={textAnswers[currentQuestion.id] || ''}
+                              onChange={(e) => handleTextAnswer(currentQuestion.id, e.target.value)}
+                              className="min-h-[120px]"
+                            />
+                          </div>
+                        ) : currentQuestion.question_type === QuestionType.NUMBER_INPUT ? (
+                          <div className="space-y-2">
+                            <Input
+                              type="number"
+                              placeholder="Введите числовой ответ"
+                              value={numberAnswers[currentQuestion.id] !== undefined ? numberAnswers[currentQuestion.id] : ''}
+                              onChange={(e) => handleNumberAnswer(currentQuestion.id, Number(e.target.value))}
+                              className="max-w-[200px]"
+                            />
+                          </div>
+                        ) : currentQuestion.question_type === QuestionType.MULTIPLE_CHOICE ? (
+                          currentQuestion.answers.map(answer => {
+                            const answers = selectedAnswers[currentQuestion.id] as string[] || [];
+                            const isSelected = Array.isArray(answers) && answers.includes(answer.id);
+                            
+                            return (
+                              <Button
+                                key={answer.id}
+                                variant={isSelected ? "default" : "outline"}
+                                className="w-full justify-start text-left h-auto py-4 px-6"
+                                onClick={() => handleSelectMultipleAnswers(currentQuestion.id, answer.id)}
+                              >
+                                {answer.answer_text}
+                              </Button>
+                            );
+                          })
+                        ) : currentQuestion.question_type === QuestionType.MATCHING ? (
+                          <div className="space-y-4">
+                            {currentQuestion.answers.map((answer, index) => {
+                              const matches = selectedAnswers[currentQuestion.id] as Record<string, string> || {};
+                              const selectedMatchId = matches[answer.id];
+                              
+                              const selectedMatch = selectedMatchId 
+                                ? currentQuestion.answers.find(a => a.id === selectedMatchId)
+                                : undefined;
+                              
+                              return (
+                                <div key={answer.id} className="p-3 border rounded-md">
+                                  <div className="font-medium mb-2">{answer.answer_text}</div>
+                                  <div className="grid grid-cols-2 gap-2">
+                                    {currentQuestion.answers.map(matchOption => (
+                                      <Button
+                                        key={`${answer.id}-${matchOption.id}`}
+                                        variant={selectedMatchId === matchOption.id ? "default" : "outline"}
+                                        className="w-full justify-start text-left h-auto py-2 px-3 text-sm"
+                                        onClick={() => handleMatchingSelection(currentQuestion.id, answer.id, matchOption.id)}
+                                      >
+                                        {matchOption.matching_text}
+                                      </Button>
+                                    ))}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        ) : (
+                          currentQuestion.answers.map(answer => (
+                            <Button
+                              key={answer.id}
+                              variant={selectedAnswers[currentQuestion.id] === answer.id ? "default" : "outline"}
+                              className="w-full justify-start text-left h-auto py-4 px-6"
+                              onClick={() => handleSelectAnswer(currentQuestion.id, answer.id)}
+                            >
+                              {answer.answer_text}
+                            </Button>
+                          ))
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+              
+              <CardFooter className="flex justify-between pt-4">
+                <Button
+                  variant="outline"
+                  onClick={handlePrevQuestion}
+                  disabled={currentQuestionIndex === 0}
+                >
+                  <ArrowLeft className="mr-2 h-4 w-4" />
+                  Назад
+                </Button>
+                
+                {currentQuestionIndex < questions.length - 1 ? (
+                  <Button
+                    onClick={handleNextQuestion}
+                    disabled={
+                      currentQuestion?.question_type === QuestionType.TEXT_INPUT 
+                        ? !textAnswers[currentQuestion?.id] 
+                        : currentQuestion?.question_type === QuestionType.NUMBER_INPUT
+                          ? numberAnswers[currentQuestion?.id] === undefined
+                          : currentQuestion?.question_type === QuestionType.MULTIPLE_CHOICE
+                            ? !selectedAnswers[currentQuestion?.id] || 
+                              (selectedAnswers[currentQuestion?.id] as string[]).length === 0
+                            : currentQuestion?.question_type === QuestionType.MATCHING
+                              ? !selectedAnswers[currentQuestion?.id] || 
+                                Object.keys(selectedAnswers[currentQuestion?.id] as Record<string, string> || {}).length < 
+                                (currentQuestion?.answers.length || 0)
+                              : !selectedAnswers[currentQuestion?.id]
+                    }
+                  >
+                    Далее
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </Button>
+                ) : (
+                  <Button
+                    onClick={handleSubmitQuiz}
+                    disabled={isSubmitting}
+                  >
+                    {isSubmitting ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Завершение...
+                      </>
+                    ) : (
+                      "Завершить тест"
+                    )}
+                  </Button>
+                )}
+              </CardFooter>
+            </Card>
+          </div>
+        </main>
+        
+        <Footer />
+      </div>
+    );
+  }
+
+  if (isFinished) {
+    return (
+      <div className="min-h-screen flex flex-col">
+        <Navbar />
+        
+        <main className="flex-grow py-16 px-4 md:px-6">
+          <div className="container mx-auto max-w-3xl">
+            <Card>
+              <CardHeader className="pb-4">
+                <div className="flex items-center justify-center mb-4">
+                  <CheckCircle2 className="h-16 w-16 text-green-600" />
+                </div>
+                <CardTitle className="text-center text-2xl">Тест завершен</CardTitle>
+                <CardDescription className="text-center text-lg">
+                  {questions.some(q => q.question_type === QuestionType.TEXT_INPUT) 
+                    ? "Ваш результат будет доступен после проверки ответов на текстовые вопросы."
+                    : `Вы ответили правильно на ${score.correct} из ${score.total} вопросов`
+                  }
+                </CardDescription>
+              </CardHeader>
+              
+              <CardContent className="pt-0 pb-6">
+                {!questions.some(q => q.question_type === QuestionType.TEXT_INPUT) && (
+                  <>
+                    <div className="w-full bg-muted rounded-full h-4 mt-4">
+                      <div 
+                        className={`h-4 rounded-full transition-all duration-1000 ${
+                          score.correct === score.total ? 'bg-green-600' :
+                          score.correct / score.total > 0.7 ? 'bg-green-500' :
+                          score.correct / score.total > 0.4 ? 'bg-yellow-500' :
+                          'bg-red-500'
+                        }`}
+                        style={{ width: `${(score.correct / score.total) * 100}%` }}
+                      />
+                    </div>
+                    
+                    <p className="text-center mt-6 text-lg">
+                      Ваш результат: {Math.round((score.correct / score.total) * 100)}%
+                    </p>
+                  </>
+                )}
+              </CardContent>
+              
+              <CardFooter className="flex flex-col sm:flex-row justify-center gap-4">
+                <Button
+                  variant="outline"
+                  onClick={() => navigate('/dashboard')}
+                >
+                  Вернуться к тестам
+                </Button>
+                {user && quiz && (
+                  <Button
+                    onClick={() => navigate(`/quiz/stats/${quiz.id}`)}
+                  >
+                    Посмотреть статистику
+                  </Button>
+                )}
+              </CardFooter>
+            </Card>
+          </div>
+        </main>
+        
+        <Footer />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -532,7 +878,6 @@ const TakeQuiz = () => {
                       
                       <div className="space-y-3">
                         {currentQuestion.question_type === QuestionType.TEXT_INPUT ? (
-                          // Text input question type
                           <div className="space-y-2">
                             <Textarea
                               placeholder="Введите ваш ответ"
@@ -542,7 +887,6 @@ const TakeQuiz = () => {
                             />
                           </div>
                         ) : currentQuestion.question_type === QuestionType.NUMBER_INPUT ? (
-                          // Number input question type
                           <div className="space-y-2">
                             <Input
                               type="number"
@@ -553,7 +897,6 @@ const TakeQuiz = () => {
                             />
                           </div>
                         ) : currentQuestion.question_type === QuestionType.MULTIPLE_CHOICE ? (
-                          // Multiple choice question type
                           currentQuestion.answers.map(answer => {
                             const answers = selectedAnswers[currentQuestion.id] as string[] || [];
                             const isSelected = Array.isArray(answers) && answers.includes(answer.id);
@@ -570,13 +913,11 @@ const TakeQuiz = () => {
                             );
                           })
                         ) : currentQuestion.question_type === QuestionType.MATCHING ? (
-                          // Matching question type
                           <div className="space-y-4">
                             {currentQuestion.answers.map((answer, index) => {
                               const matches = selectedAnswers[currentQuestion.id] as Record<string, string> || {};
                               const selectedMatchId = matches[answer.id];
                               
-                              // Get selected match text
                               const selectedMatch = selectedMatchId 
                                 ? currentQuestion.answers.find(a => a.id === selectedMatchId)
                                 : undefined;
@@ -601,7 +942,6 @@ const TakeQuiz = () => {
                             })}
                           </div>
                         ) : (
-                          // Single choice and true/false question types
                           currentQuestion.answers.map(answer => (
                             <Button
                               key={answer.id}
