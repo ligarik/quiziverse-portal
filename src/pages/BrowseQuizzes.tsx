@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
@@ -53,7 +54,7 @@ const BrowseQuizzes = () => {
           prevent_back_button: item.prevent_back_button,
           confirm_last_next: item.confirm_last_next,
           confirm_finish: item.confirm_finish,
-          password: item.password || undefined
+          password: item.password ?? undefined
         }));
 
         setQuizzes(formattedQuizzes);
