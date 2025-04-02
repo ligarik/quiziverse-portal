@@ -27,7 +27,8 @@ const BrowseQuizzes = () => {
         const { data, error } = await supabase
           .from('quizzes')
           .select('*')
-          .eq('is_public', true);
+          .eq('is_public', true)
+          .eq('is_published', true); // Only fetch published quizzes
 
         if (error) {
           throw error;
