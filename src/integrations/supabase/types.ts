@@ -297,6 +297,7 @@ export type Database = {
           id: string
           is_public: boolean
           is_published: boolean | null
+          password: string | null
           prevent_back_button: boolean | null
           prevent_copy: boolean | null
           question_limit: number | null
@@ -319,6 +320,7 @@ export type Database = {
           id?: string
           is_public?: boolean
           is_published?: boolean | null
+          password?: string | null
           prevent_back_button?: boolean | null
           prevent_copy?: boolean | null
           question_limit?: number | null
@@ -341,6 +343,7 @@ export type Database = {
           id?: string
           is_public?: boolean
           is_published?: boolean | null
+          password?: string | null
           prevent_back_button?: boolean | null
           prevent_copy?: boolean | null
           question_limit?: number | null

@@ -3,7 +3,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { Checkbox } from '@/components/ui/checkbox';
 import { 
   Card, 
   CardContent,
@@ -57,7 +56,7 @@ const QuizSettings = ({ quiz, onSettingsUpdated }: QuizSettingsProps) => {
   const [confirmLastNext, setConfirmLastNext] = useState<boolean>(quiz.confirm_last_next || false);
   const [confirmFinish, setConfirmFinish] = useState<boolean>(quiz.confirm_finish || true);
   
-  const [passwordProtect, setPasswordProtect] = useState<boolean>(!!quiz.password);
+  const [passwordProtect, setPasswordProtect] = useState<boolean>(Boolean(quiz.password));
   const [password, setPassword] = useState<string>(quiz.password || '');
   
   const [activeTab, setActiveTab] = useState("general");
@@ -494,7 +493,14 @@ const QuizSettings = ({ quiz, onSettingsUpdated }: QuizSettingsProps) => {
                 disabled={isLoading || (passwordProtect && !password)}
                 className="w-full"
               >
-                Сохранить настройки
+                {isLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Сохранение...
+                  </>
+                ) : (
+                  'Сохранить настройки'
+                )}
               </Button>
             </CardContent>
           </Card>

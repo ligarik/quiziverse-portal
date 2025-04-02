@@ -50,7 +50,7 @@ export type Quiz = {
   prevent_back_button?: boolean;
   confirm_last_next?: boolean;
   confirm_finish?: boolean;
-  password?: string; // Make password optional in the type definition
+  password?: string; // Ensure password is optional
 };
 
 export type Question = {
