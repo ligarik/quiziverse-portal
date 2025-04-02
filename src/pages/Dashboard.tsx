@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
@@ -78,7 +77,18 @@ const Dashboard = () => {
           is_published: item.is_published || false,
           time_limit: item.time_limit,
           randomize_questions: item.randomize_questions,
-          show_feedback: item.show_feedback
+          show_feedback: item.show_feedback,
+          updated_at: item.updated_at,
+          show_question_numbers: item.show_question_numbers,
+          show_progress_bar: item.show_progress_bar,
+          randomize_answers: item.randomize_answers,
+          question_limit: item.question_limit,
+          show_elapsed_time: item.show_elapsed_time,
+          prevent_copy: item.prevent_copy,
+          prevent_back_button: item.prevent_back_button,
+          confirm_last_next: item.confirm_last_next,
+          confirm_finish: item.confirm_finish,
+          password: item.password
         }));
         
         setQuizzes(quizzesWithPublishState);
