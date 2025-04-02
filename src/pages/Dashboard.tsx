@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
@@ -67,7 +66,7 @@ const Dashboard = () => {
         
         if (error) throw error;
         
-        // Convert database records to Quiz type
+        // Convert database records to Quiz type - safely handling properties
         const quizzesWithPublishState: Quiz[] = (data || []).map(item => ({
           id: item.id,
           title: item.title,
@@ -88,9 +87,7 @@ const Dashboard = () => {
           prevent_copy: item.prevent_copy,
           prevent_back_button: item.prevent_back_button,
           confirm_last_next: item.confirm_last_next,
-          confirm_finish: item.confirm_finish,
-          // Only set password if it exists in the data
-          password: item.password || undefined
+          confirm_finish: item.confirm_finish
         }));
         
         setQuizzes(quizzesWithPublishState);
